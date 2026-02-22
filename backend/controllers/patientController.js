@@ -1,9 +1,8 @@
 /*
-
-controllers/patientController.js
-Handles all patient-related operations (CRUD)
-
+  controllers/patientController.js
+  Handles all patient-related operations (CRUD)
 */
+
 const db = require('../config/database');
 const axios = require('axios');
 const { validatePatientData } = require('../utils/validation');
@@ -34,8 +33,7 @@ const createPatient = async (req, res) => {
 
     const { risk_score, risk_category } = mlResponse.data;
 
-    // Insert patient into database with ALL 14 fields
-    const query = `
+    const sql = `
       INSERT INTO patients (
         age, sex, social_life, cholesterol, triglycerides, 
         hdl, ldl, vldl, bp_systolic, bp_diastolic, 
@@ -64,13 +62,17 @@ const createPatient = async (req, res) => {
       req.body.clinician_id
     ];
 
-    const [result] = await db.execute(query, values);
+    const result = await db.execute(sql, values);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
 
     res.status(201).json({
       success: true,
       message: 'Patient created successfully',
       data: {
-        patient_id: result.insertId,
+        patient_id: result.data.insertId,
         ...req.body,
         risk_score: risk_score,
         risk_category: risk_category
@@ -79,7 +81,6 @@ const createPatient = async (req, res) => {
 
   } catch (error) {
     console.error('Error creating patient:', error);
-
     res.status(500).json({
       success: false,
       message: 'Failed to create patient',
@@ -92,26 +93,37 @@ const getAllPatients = async (req, res) => {
   try {
     const { clinician_id, sortBy, riskLevel } = req.query;
 
-    let query = 'SELECT * FROM patients WHERE clinician_id = ?';
+    if (!clinician_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'clinician_id query parameter is required'
+      });
+    }
+
+    let sql = 'SELECT * FROM patients WHERE clinician_id = ?';
     const values = [clinician_id];
 
     if (riskLevel) {
-      query += ' AND risk_category = ?';
+      sql += ' AND risk_category = ?';
       values.push(riskLevel);
     }
 
     if (sortBy === 'risk') {
-      query += ' ORDER BY risk_score DESC';
+      sql += ' ORDER BY risk_score DESC';
     } else {
-      query += ' ORDER BY patient_id DESC';
+      sql += ' ORDER BY patient_id DESC';
     }
 
-    const [patients] = await db.execute(query, values);
+    const result = await db.query(sql, values);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
 
     res.status(200).json({
       success: true,
-      count: patients.length,
-      data: patients
+      count: result.data.length,
+      data: result.data
     });
 
   } catch (error) {
@@ -128,10 +140,16 @@ const getPatientById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const query = 'SELECT * FROM patients WHERE patient_id = ?';
-    const [patients] = await db.execute(query, [id]);
+    const result = await db.queryOne(
+      'SELECT * FROM patients WHERE patient_id = ?',
+      [id]
+    );
 
-    if (patients.length === 0) {
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    if (!result.data) {
       return res.status(404).json({
         success: false,
         message: 'Patient not found'
@@ -140,7 +158,7 @@ const getPatientById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: patients[0]
+      data: result.data
     });
 
   } catch (error) {
@@ -157,10 +175,17 @@ const updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const checkQuery = 'SELECT * FROM patients WHERE patient_id = ?';
-    const [existingPatients] = await db.execute(checkQuery, [id]);
+    // Check if patient exists
+    const existing = await db.queryOne(
+      'SELECT * FROM patients WHERE patient_id = ?',
+      [id]
+    );
 
-    if (existingPatients.length === 0) {
+    if (!existing.success) {
+      throw new Error(existing.error);
+    }
+
+    if (!existing.data) {
       return res.status(404).json({
         success: false,
         message: 'Patient not found'
@@ -176,7 +201,7 @@ const updatePatient = async (req, res) => {
       });
     }
 
-    // Recalculate risk with ONLY 7 features
+    // Recalculate risk with 7 features
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age: req.body.age,
       sex: req.body.sex,
@@ -189,8 +214,7 @@ const updatePatient = async (req, res) => {
 
     const { risk_score, risk_category } = mlResponse.data;
 
-    // Update with ALL 14 fields
-    const updateQuery = `
+    const sql = `
       UPDATE patients 
       SET age = ?, sex = ?, social_life = ?, cholesterol = ?, 
           triglycerides = ?, hdl = ?, ldl = ?, vldl = ?, 
@@ -220,7 +244,11 @@ const updatePatient = async (req, res) => {
       id
     ];
 
-    await db.execute(updateQuery, values);
+    const result = await db.execute(sql, values);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
 
     res.status(200).json({
       success: true,
@@ -235,7 +263,6 @@ const updatePatient = async (req, res) => {
 
   } catch (error) {
     console.error('Error updating patient:', error);
-    
     res.status(500).json({
       success: false,
       message: 'Failed to update patient',
@@ -248,18 +275,31 @@ const deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const checkQuery = 'SELECT * FROM patients WHERE patient_id = ?';
-    const [existingPatients] = await db.execute(checkQuery, [id]);
+    // Check if patient exists
+    const existing = await db.queryOne(
+      'SELECT * FROM patients WHERE patient_id = ?',
+      [id]
+    );
 
-    if (existingPatients.length === 0) {
+    if (!existing.success) {
+      throw new Error(existing.error);
+    }
+
+    if (!existing.data) {
       return res.status(404).json({
         success: false,
         message: 'Patient not found'
       });
     }
 
-    const deleteQuery = 'DELETE FROM patients WHERE patient_id = ?';
-    await db.execute(deleteQuery, [id]);
+    const result = await db.execute(
+      'DELETE FROM patients WHERE patient_id = ?',
+      [id]
+    );
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
 
     res.status(200).json({
       success: true,
