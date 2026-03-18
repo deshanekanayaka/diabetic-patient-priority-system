@@ -31,10 +31,10 @@
 
 body {
   font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
   background: var(--gray-50);
   color: var(--gray-900);
   line-height: 1.5;
@@ -45,6 +45,7 @@ body {
   max-width: 1600px;
   margin: 0 auto;
 }
+
 /* Header */
 .header {
   background: white;
@@ -96,23 +97,19 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Inactive State - Transparent */
 .nav-link:not(.active) {
   background: transparent;
   color: var(--gray-700);
 }
 
-/* Hover State for Inactive Links */
 .nav-link:not(.active):hover {
   color: var(--gray-900);
 }
 
-/* Active Link Hover */
 .nav-link.active:hover {
   background: #1d4ed8;
 }
 
-/* Focus State for Accessibility */
 .nav-link:focus {
   outline: none;
   box-shadow: 0 0 0 3px var(--primary-blue-light);
@@ -142,6 +139,7 @@ body {
   font-weight: 600;
   font-size: 14px;
 }
+
 /* Stat Cards */
 .stat-cards-container {
   display: flex;
@@ -161,8 +159,8 @@ body {
   min-width: 240px;
   flex: 0 1 auto;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
@@ -194,6 +192,7 @@ body {
 .stat-card.low .stat-card-value {
   color: var(--success-green);
 }
+
 /* Priority Patients Table */
 .table-container {
   background: white;
@@ -204,7 +203,7 @@ body {
 }
 
 .table-header {
-  padding: 24px 28px;
+  padding: 16px 20px; /* reduced from 24px 28px */
   border-bottom: 1px solid var(--gray-200);
   background: white;
 }
@@ -334,10 +333,10 @@ table {
 }
 
 thead tr.column-headers th {
-  padding: 14px 12px;
+  padding: 10px 12px; /* reduced from 14px 12px */
   background: var(--gray-100);
   border-bottom: 2px solid var(--gray-300);
-  font-size: 13px;
+  font-size: 12px; /* reduced from 13px */
   font-weight: 700;
   color: var(--gray-700);
   text-align: left;
@@ -434,8 +433,8 @@ tbody tr:hover {
 }
 
 td {
-  padding: 16px 12px;
-  font-size: 14px;
+  padding: 10px 12px; /* reduced from 16px 12px */
+  font-size: 13px;    /* reduced from 14px */
   color: var(--gray-700);
   white-space: nowrap;
 }
@@ -463,9 +462,9 @@ input[type="checkbox"] {
 
 .risk-badge {
   display: inline-block;
-  padding: 6px 14px;
+  padding: 4px 10px; /* reduced from 6px 14px */
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11px;   /* reduced from 12px */
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -502,11 +501,11 @@ input[type="checkbox"] {
 }
 
 .action-btn {
-  padding: 6px 14px;
+  padding: 4px 10px;  /* reduced from 6px 14px */
   border: 1px solid var(--gray-300);
   background: white;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;    /* reduced from 13px */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -538,7 +537,7 @@ input[type="checkbox"] {
 }
 
 .pagination {
-  padding: 20px 28px;
+  padding: 14px 20px; /* reduced from 20px 28px */
   border-top: 1px solid var(--gray-200);
   display: flex;
   justify-content: space-between;
@@ -588,6 +587,7 @@ input[type="checkbox"] {
   color: var(--gray-600);
   margin-right: 12px;
 }
+
 /* Login Page */
 .login-page {
   min-height: 100vh;
@@ -608,8 +608,8 @@ input[type="checkbox"] {
   border-radius: 16px;
   padding: 48px 40px;
   box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.07),
-    0 10px 15px rgba(0, 0, 0, 0.1);
+          0 4px 6px rgba(0, 0, 0, 0.07),
+          0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
 .login-header {
@@ -716,6 +716,7 @@ input[type="checkbox"] {
   color: #1d4ed8;
   text-decoration: underline;
 }
+
 /* Analytics Page */
 .analytics-page {
   min-height: 100vh;
@@ -745,6 +746,7 @@ input[type="checkbox"] {
   display: flex;
   gap: 12px;
 }
+
 /* Charts Grid */
 .charts-grid {
   display: grid;
@@ -781,10 +783,7 @@ input[type="checkbox"] {
   min-height: 400px;
 }
 
-/* ========================================
-   HORIZONTAL BAR CHART
-   ======================================== */
-
+/* Horizontal Bar Chart */
 .horizontal-bar-chart {
   display: flex;
   flex-direction: column;
@@ -828,7 +827,8 @@ input[type="checkbox"] {
   color: white;
   z-index: 1;
 }
-/* Age distribution bar chart */
+
+/* Age Distribution Bar Chart */
 .grouped-bar-chart {
   display: flex;
   flex-direction: column;
