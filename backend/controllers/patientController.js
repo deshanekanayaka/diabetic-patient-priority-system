@@ -37,9 +37,9 @@ const createPatient = async (req, res) => {
       INSERT INTO patients (
         age, sex, social_life, cholesterol, triglycerides, 
         hdl, ldl, vldl, bp_systolic, bp_diastolic, 
-        hba1c, bmi, rbs, genetic_family_history, 
+        hba1c, bmi, rbs,
         risk_score, risk_category, clinician_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -56,7 +56,6 @@ const createPatient = async (req, res) => {
       req.body.hba1c,
       req.body.bmi,
       req.body.rbs,
-      req.body.genetic_family_history,
       risk_score,
       risk_category,
       req.body.clinician_id
@@ -141,8 +140,8 @@ const getPatientById = async (req, res) => {
     const { id } = req.params;
 
     const result = await db.queryOne(
-      'SELECT * FROM patients WHERE patient_id = ?',
-      [id]
+        'SELECT * FROM patients WHERE patient_id = ?',
+        [id]
     );
 
     if (!result.success) {
@@ -177,8 +176,8 @@ const updatePatient = async (req, res) => {
 
     // Check if patient exists
     const existing = await db.queryOne(
-      'SELECT * FROM patients WHERE patient_id = ?',
-      [id]
+        'SELECT * FROM patients WHERE patient_id = ?',
+        [id]
     );
 
     if (!existing.success) {
@@ -219,7 +218,7 @@ const updatePatient = async (req, res) => {
       SET age = ?, sex = ?, social_life = ?, cholesterol = ?, 
           triglycerides = ?, hdl = ?, ldl = ?, vldl = ?, 
           bp_systolic = ?, bp_diastolic = ?, hba1c = ?, 
-          bmi = ?, rbs = ?, genetic_family_history = ?,
+          bmi = ?, rbs = ?,
           risk_score = ?, risk_category = ?
       WHERE patient_id = ?
     `;
@@ -238,7 +237,6 @@ const updatePatient = async (req, res) => {
       req.body.hba1c,
       req.body.bmi,
       req.body.rbs,
-      req.body.genetic_family_history,
       risk_score,
       risk_category,
       id
@@ -275,10 +273,9 @@ const deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if patient exists
     const existing = await db.queryOne(
-      'SELECT * FROM patients WHERE patient_id = ?',
-      [id]
+        'SELECT * FROM patients WHERE patient_id = ?',
+        [id]
     );
 
     if (!existing.success) {
@@ -293,8 +290,8 @@ const deletePatient = async (req, res) => {
     }
 
     const result = await db.execute(
-      'DELETE FROM patients WHERE patient_id = ?',
-      [id]
+        'DELETE FROM patients WHERE patient_id = ?',
+        [id]
     );
 
     if (!result.success) {

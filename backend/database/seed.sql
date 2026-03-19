@@ -1,303 +1,221 @@
--- seed.sql
--- Diabetic Risk Classification System — Full Reseed
--- 3 Clinicians | 6 Patients (2 per clinician)
--- Run AFTER schema.sql
---
--- ⚠️  BEFORE RUNNING:
---     Replace each PLAINTEXT_PASSWORD_HERE with your bcrypt hash
---     using your encryption script, then run this file.
-USE diabetic_db;
--- ─────────────────────────────────────────────
--- STEP 1: Full reset (children first, then parents)
--- ─────────────────────────────────────────────
-SET FOREIGN_KEY_CHECKS = 0;
-DELETE FROM patients;
-DELETE FROM clinicians;
-ALTER TABLE patients AUTO_INCREMENT = 1;
-ALTER TABLE clinicians AUTO_INCREMENT = 1;
-SET FOREIGN_KEY_CHECKS = 1;
--- ─────────────────────────────────────────────
--- STEP 2: Insert clinicians
--- Replace each password value with your generated bcrypt hash
--- ─────────────────────────────────────────────
-INSERT INTO clinicians (name, email, password)
-VALUES (
-        'Sarah Johnson',
-        'sarah.johnson@clinic.com',
-        'Test123!'
-    ),
-    (
-        'Michael Chen',
-        'michael.chen@clinic.com',
-        'Test123!'
-    ),
-    (
-        'Emily Davis',
-        'emily.davis@clinic.com',
-        'Test123!'
-    );
--- ─────────────────────────────────────────────
--- STEP 3: Insert patients
--- Columns: age, sex, social_life, cholesterol, triglycerides, hdl, ldl, vldl,
---          bp_systolic, bp_diastolic, hba1c, bmi, rbs,
---          genetic_family_history, risk_score, risk_category, clinician_id
--- ─────────────────────────────────────────────
--- ── Clinician 1: Sarah Johnson ──────────────
--- Patient 1 | High risk | Male, 52, city
-INSERT INTO patients (
-        age,
-        sex,
-        social_life,
-        cholesterol,
-        triglycerides,
-        hdl,
-        ldl,
-        vldl,
-        bp_systolic,
-        bp_diastolic,
-        hba1c,
-        bmi,
-        rbs,
-        genetic_family_history,
-        risk_score,
-        risk_category,
-        clinician_id
-    )
-VALUES (
-        52,
-        'male',
-        'city',
-        238.00,
-        195.00,
-        36.00,
-        155.00,
-        39.00,
-        148.00,
-        93.00,
-        8.10,
-        30.80,
-        172.00,
-        'father',
-        82.40,
-        'high',
-        1
-    );
--- Patient 2 | Low risk | Female, 29, village
-INSERT INTO patients (
-        age,
-        sex,
-        social_life,
-        cholesterol,
-        triglycerides,
-        hdl,
-        ldl,
-        vldl,
-        bp_systolic,
-        bp_diastolic,
-        hba1c,
-        bmi,
-        rbs,
-        genetic_family_history,
-        risk_score,
-        risk_category,
-        clinician_id
-    )
-VALUES (
-        29,
-        'female',
-        'village',
-        165.00,
-        95.00,
-        62.00,
-        85.00,
-        19.00,
-        112.00,
-        74.00,
-        5.10,
-        21.80,
-        92.00,
-        NULL,
-        22.50,
-        'low',
-        1
-    );
--- ── Clinician 2: Michael Chen ───────────────
--- Patient 3 | High risk | Male, 60, city
-INSERT INTO patients (
-        age,
-        sex,
-        social_life,
-        cholesterol,
-        triglycerides,
-        hdl,
-        ldl,
-        vldl,
-        bp_systolic,
-        bp_diastolic,
-        hba1c,
-        bmi,
-        rbs,
-        genetic_family_history,
-        risk_score,
-        risk_category,
-        clinician_id
-    )
-VALUES (
-        60,
-        'male',
-        'city',
-        245.00,
-        210.00,
-        33.00,
-        162.00,
-        42.00,
-        155.00,
-        97.00,
-        8.60,
-        32.40,
-        188.00,
-        'mother',
-        91.20,
-        'high',
-        2
-    );
--- Patient 4 | Medium risk | Female, 44, village
-INSERT INTO patients (
-        age,
-        sex,
-        social_life,
-        cholesterol,
-        triglycerides,
-        hdl,
-        ldl,
-        vldl,
-        bp_systolic,
-        bp_diastolic,
-        hba1c,
-        bmi,
-        rbs,
-        genetic_family_history,
-        risk_score,
-        risk_category,
-        clinician_id
-    )
-VALUES (
-        44,
-        'female',
-        'village',
-        192.00,
-        140.00,
-        48.00,
-        115.00,
-        28.00,
-        128.00,
-        83.00,
-        6.40,
-        25.60,
-        118.00,
-        'uncle_paternal',
-        54.70,
-        'medium',
-        2
-    );
--- ── Clinician 3: Emily Davis ─────────────────
--- Patient 5 | Medium risk | Male, 48, city
-INSERT INTO patients (
-        age,
-        sex,
-        social_life,
-        cholesterol,
-        triglycerides,
-        hdl,
-        ldl,
-        vldl,
-        bp_systolic,
-        bp_diastolic,
-        hba1c,
-        bmi,
-        rbs,
-        genetic_family_history,
-        risk_score,
-        risk_category,
-        clinician_id
-    )
-VALUES (
-        48,
-        'male',
-        'city',
-        205.00,
-        158.00,
-        42.00,
-        122.00,
-        31.00,
-        132.00,
-        86.00,
-        6.80,
-        27.30,
-        128.00,
-        'uncle_maternal',
-        61.90,
-        'medium',
-        3
-    );
--- Patient 6 | Low risk | Female, 35, village
-INSERT INTO patients (
-        age,
-        sex,
-        social_life,
-        cholesterol,
-        triglycerides,
-        hdl,
-        ldl,
-        vldl,
-        bp_systolic,
-        bp_diastolic,
-        hba1c,
-        bmi,
-        rbs,
-        genetic_family_history,
-        risk_score,
-        risk_category,
-        clinician_id
-    )
-VALUES (
-        35,
-        'female',
-        'village',
-        172.00,
-        108.00,
-        58.00,
-        92.00,
-        21.00,
-        118.00,
-        77.00,
-        5.40,
-        23.10,
-        98.00,
-        NULL,
-        28.30,
-        'low',
-        3
-    );
--- ─────────────────────────────────────────────
--- STEP 4: Verify
--- ─────────────────────────────────────────────
-SELECT 'Clinicians:' AS '';
-SELECT clinician_id,
-    full_name,
-    email
-FROM clinicians
-ORDER BY clinician_id;
-SELECT 'Patients:' AS '';
-SELECT patient_id,
-    age,
-    sex,
-    social_life,
-    hba1c,
-    bmi,
-    risk_score,
-    risk_category,
-    clinician_id
-FROM patients
-ORDER BY clinician_id,
-    patient_id;
+import React, { useState } from 'react';
+import axios from 'axios';
+import './modals.css';
+
+const BASE_URL = 'http://localhost:3300';
+const DEFAULT_CLINICIAN_ID = 1;
+
+const EMPTY_FORM = {
+  age:                    '',
+  sex:                    'male',
+  social_life:            'city',
+  bp_systolic:            '',
+  bp_diastolic:           '',
+  cholesterol:            '',
+  triglycerides:          '',
+  hdl:                    '',
+  ldl:                    '',
+  vldl:                   '',
+  hba1c:                  '',
+  bmi:                    '',
+  rbs:                    '',
+  genetic_family_history: '',
+};
+
+const RANGES = {
+  age:                    { min: 0,  max: 120  },
+  bp_systolic:            { min: 50, max: 250  },
+  bp_diastolic:           { min: 30, max: 150  },
+  cholesterol:            { min: 0,  max: 500  },
+  triglycerides:          { min: 0,  max: 1000 },
+  hdl:                    { min: 0,  max: 100  },
+  ldl:                    { min: 0,  max: 300  },
+  vldl:                   { min: 0,  max: 100  },
+  hba1c:                  { min: 0,  max: 20   },
+  bmi:                    { min: 10, max: 60   },
+  rbs:                    { min: 0,  max: 600  },
+  genetic_family_history: { min: 0,  max: 10   },
+};
+
+const validateField = (name, value) => {
+  const range = RANGES[name];
+  if (!range || value === '') return null;
+  const num = parseFloat(value);
+  if (isNaN(num)) return 'Must be a number';
+  if (num < range.min || num > range.max) return `Valid range: ${range.min}–${range.max}`;
+return null;
+};
+
+const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
+  const [form,     setForm]     = useState(EMPTY_FORM);
+  const [errors,   setErrors]   = useState({});
+  const [saving,   setSaving]   = useState(false);
+  const [apiError, setApiError] = useState(null);
+
+  if (!isOpen) return null;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+};
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    if (RANGES[name]) {
+      setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+}
+  };
+
+  const handleClose = () => {
+    setForm(EMPTY_FORM);
+    setErrors({});
+    setApiError(null);
+    onClose();
+};
+
+  const handleSave = async () => {
+    const freshErrors = {};
+    Object.keys(RANGES).forEach((field) => {
+      if (form[field] === '') {
+        freshErrors[field] = 'Required';
+      } else {
+        const err = validateField(field, form[field]);
+        if (err) freshErrors[field] = err;
+      }
+    });
+
+    if (Object.keys(freshErrors).length > 0) {
+      setErrors(freshErrors);
+      return;
+}
+
+    try {
+      setSaving(true);
+      setApiError(null);
+
+      const payload = {};
+      Object.entries(form).forEach(([key, val]) => {
+        payload[key] = RANGES[key] !== undefined ? parseFloat(val) : val;
+      });
+
+      const res = await axios.post(`${BASE_URL}/api/patients`, {
+        ...payload,
+        clinician_id: DEFAULT_CLINICIAN_ID,
+      });
+
+      if (!res.data.success) {
+        const msg = res.data.errors?.length ? res.data.errors.join(', ') : res.data.message || 'Failed to add patient.';
+        setApiError(msg);
+        return;
+}
+
+      onPatientAdded();
+      handleClose();
+} catch (err) {
+      console.error(err);
+      const serverErrors = err.response?.data?.errors;
+      setApiError(serverErrors?.length ? serverErrors.join(', ') : err.response?.data?.message || 'Could not connect to server.');
+} finally {
+      setSaving(false);
+}
+  };
+
+  const hasErrors = Object.values(errors).some(Boolean);
+
+  const Field = ({ name, placeholder }) => (
+    <div>
+      <input
+        type="number"
+        name={name}
+        value={form[name]}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className={`modal-input${errors[name] ? ' input-error' : ''}`}
+      />
+      {errors[name] && <p className="modal-input-error-msg">⚠ {errors[name]}</p>}
+    </div>
+  );
+
+return (
+    <>
+    <div className="modal-overlay" onClick={handleClose} />
+    <div className="modal-panel">
+    <div className="modal-header">
+    <h2 className="modal-title">Add Patient Details</h2>
+    <button className="modal-close-btn" onClick={handleClose}>✕</button>
+    </div>
+
+    <div className="modal-grid-2">
+    <div>
+    <p className="modal-section-label">Age</p>
+    <Field name="age" placeholder="Age" />
+    </div>
+    <div>
+    <p className="modal-section-label">Gender</p>
+    <div className="modal-radio-group">
+    {['male', 'female'].map((val) => (
+                <label key={val} className="modal-radio-label">
+                  <input type="radio" name="sex" value={val} checked={form.sex === val} onChange={handleChange} />
+                  {val.charAt(0).toUpperCase() + val.slice(1)}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <p className="modal-section-label">Social Life</p>
+        <select name="social_life" value={form.social_life} onChange={handleChange} className="modal-select">
+          <option value="city">City</option>
+          <option value="village">Village</option>
+        </select>
+
+        <p className="modal-section-label">Blood Pressure</p>
+        <div className="modal-grid-2">
+          <Field name="bp_systolic"  placeholder="Systolic"  />
+          <Field name="bp_diastolic" placeholder="Diastolic" />
+        </div>
+
+        <p className="modal-section-label">Lipid Profile</p>
+        <div className="modal-grid-5">
+          <Field name="cholesterol"   placeholder="Chol" />
+          <Field name="triglycerides" placeholder="Trig" />
+          <Field name="hdl"           placeholder="HDL"  />
+          <Field name="ldl"           placeholder="LDL"  />
+          <Field name="vldl"          placeholder="VLDL" />
+        </div>
+
+        <p className="modal-section-label">Blood Sugar &amp; Metabolic</p>
+        <div className="modal-grid-4">
+          <Field name="hba1c" placeholder="HbA1c" />
+          <Field name="bmi"   placeholder="BMI"   />
+          <Field name="rbs"   placeholder="RBS"   />
+        </div>
+
+        <div className="modal-label-row">
+          <span className="modal-section-label">Genetic Risk Count</span>
+          <div className="info-icon-wrapper">
+            <span className="info-icon">i</span>
+            <div className="info-tooltip">
+              Count of affected relatives with diabetes:<br />
+              1 = Father &nbsp;&nbsp; 2 = Mother<br />
+              3 = Uncle (maternal) &nbsp;&nbsp; 4 = Uncle (paternal)
+            </div>
+          </div>
+        </div>
+        <Field name="genetic_family_history" placeholder="e.g. 0, 1, 2…" />
+
+        {apiError && <div className="modal-error-banner">{apiError}</div>}
+
+        <div className="modal-footer">
+          <button className="btn-modal-cancel" onClick={handleClose}>Cancel</button>
+          <button className="btn-modal-save" onClick={handleSave} disabled={saving || hasErrors}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default AddPatientModal;

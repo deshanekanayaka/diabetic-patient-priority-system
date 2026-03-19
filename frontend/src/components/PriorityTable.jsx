@@ -1,223 +1,327 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import axios from 'axios';
+import AddPatientModal from './AddPatientModal';
+import EditPatientModal from './EditPatientModal';
+
+
+const BASE_URL = 'http://localhost:3300';
+const DEFAULT_CLINICIAN_ID = 1;
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const PriorityTable = () => {
+  const [patients,     setPatients]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [searchId,     setSearchId]     = useState('');
+  const [riskFilter,   setRiskFilter]   = useState('all');
+  const [page,         setPage]         = useState(1);
+  const [pageSize,     setPageSize]     = useState(10);
+  const [showAdd,      setShowAdd]      = useState(false);
+  const [editPatient,  setEditPatient]  = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting,     setDeleting]     = useState(false);
+  const [selected,     setSelected]     = useState(new Set());
+
+  const fetchPatients = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await axios.get(`${BASE_URL}/api/patients`, {
+        params: { clinician_id: DEFAULT_CLINICIAN_ID, sortBy: 'risk' },
+      });
+      if (!res.data.success) throw new Error(res.data.message || 'Failed to fetch patients');
+      setPatients(res.data.data || []);
+      setPage(1);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Could not load patients. Is the server running?');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPatients(); }, [fetchPatients]);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleting(true);
+      const res = await axios.delete(`${BASE_URL}/api/patients/${deleteTarget.patient_id}`);
+      if (!res.data.success) throw new Error(res.data.message);
+      setDeleteTarget(null);
+      fetchPatients();
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleOne = (id) =>
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+
+  const toggleAll = (visibleIds) =>
+      setSelected((prev) => {
+        const allChecked = visibleIds.every((id) => prev.has(id));
+        return allChecked ? new Set() : new Set([...prev, ...visibleIds]);
+      });
+
+  const filtered = patients.filter((p) => {
+    const matchSearch = searchId.trim() === '' || String(p.patient_id).includes(searchId.trim());
+    const matchRisk   = riskFilter === 'all' || (p.risk_category || '').toLowerCase() === riskFilter;
+    return matchSearch && matchRisk;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage   = Math.min(page, totalPages);
+  const startIdx   = (safePage - 1) * pageSize;
+  const pageRows   = filtered.slice(startIdx, startIdx + pageSize);
+  const pageIds    = pageRows.map((p) => p.patient_id);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= Math.min(4, totalPages); i++) pages.push(i);
+    if (totalPages > 4) { pages.push('...'); pages.push(totalPages); }
+    return pages;
+  };
+
+  const RiskBadge = ({ level = '' }) => (
+      <span className={`risk-badge ${level.toLowerCase()}`}>{level || '—'}</span>
+  );
+
   return (
-    <div className="table-container">
-      {/* Table Header */}
-      <div className="table-header">
-        <div className="table-header-top">
-          <h1 className="table-title">Priority Patients List</h1>
-          <div className="table-header-actions">
-            <button className="btn btn-primary"> + Add Patient</button>
-          </div>
-        </div>
+      <>
+        <AddPatientModal
+            isOpen={showAdd}
+            onClose={() => setShowAdd(false)}
+            onPatientAdded={() => { setShowAdd(false); fetchPatients(); }}
+        />
 
-        <div className="table-controls-row">
-          <div className="search-box">
-            <input type="text" placeholder="Search by Patient ID" />
-          </div>
+        <EditPatientModal
+            isOpen={!!editPatient}
+            onClose={() => setEditPatient(null)}
+            onPatientUpdated={() => { setEditPatient(null); fetchPatients(); }}
+            patient={editPatient}
+        />
 
-          <div className="filter-controls">
-            <select className="filter-select">
-              <option value="all">All Risk Levels</option>
-              <option value="high">High Risk Only</option>
-              <option value="medium">Medium Risk Only</option>
-              <option value="low">Low Risk Only</option>
-            </select>
-          </div>
-        </div>
-      </div>
+        {deleteTarget && (
+            <>
+              <div className="modal-overlay" onClick={() => setDeleteTarget(null)} />
+              <div className="modal-panel-sm">
+                <div className="modal-header">
+                  <h2 className="modal-title">Delete Patient</h2>
+                  <button className="modal-close-btn" onClick={() => setDeleteTarget(null)}>✕</button>
+                </div>
+                <p className="delete-confirm-text">
+                  Are you sure you want to delete <strong>P–{deleteTarget.patient_id}</strong>?
+                </p>
+                <p className="delete-confirm-sub">This action cannot be undone.</p>
+                <div className="modal-footer">
+                  <button className="btn-modal-cancel" onClick={() => setDeleteTarget(null)}>Cancel</button>
+                  <button className="btn-modal-delete" onClick={confirmDelete} disabled={deleting}>
+                    {deleting ? 'Deleting…' : 'Yes, Delete'}
+                  </button>
+                </div>
+              </div>
+            </>
+        )}
 
-      {/* Table */}
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr className="column-headers">
-              <th className="col-batch-checkbox"><input type="checkbox" /></th>
-              <th className="col-patient-id">Patient ID</th>
-              <th className="col-age">Age</th>
-              <th className="col-score">Score</th>
-              <th className="col-risk">Risk</th>
-              <th className="col-sex">Sex</th>
-              <th className="col-social">Social Life</th>
-              <th className="col-systolic">Systolic</th>
-              <th className="col-diastolic">Diastolic</th>
-              <th className="col-chol">Chol</th>
-              <th className="col-trig">Trig</th>
-              <th className="col-hdl">HDL</th>
-              <th className="col-ldl">LDL</th>
-              <th className="col-vldl">VLDL</th>
-              <th className="col-hba1c">HbA1c</th>
-              <th className="col-bmi">BMI</th>
-              <th className="col-rbs">RBS</th>
-              <th className="col-family">Genetic Risk Count</th>
-              <th className="col-actions">Actions</th>
-            </tr>
-          </thead>
+        <div className="table-container">
+          <div className="table-header">
+            <div className="table-header-top">
+              <h1 className="table-title">Priority Patients List</h1>
+              <div className="table-header-actions">
+                <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+                  + Add Patient
+                </button>
+              </div>
+            </div>
 
-          <tbody>
-            {/* Row 1 */}
-            <tr>
-              <td><input type="checkbox" /></td>
-              <td className="patient-id">P-1001</td>
-              <td className="text-center">54</td>
-              <td className="text-center risk-score">82.4</td>
-              <td><span className="risk-badge high">High</span></td>
-              <td>Male</td>
-              <td>City</td>
-              <td className="text-center">145</td>
-              <td className="text-center">92</td>
-              <td className="text-center">220</td>
-              <td className="text-center">180</td>
-              <td className="text-center">38</td>
-              <td className="text-center">145</td>
-              <td className="text-center">36</td>
-              <td className="text-center">6.9</td>
-              <td className="text-center">29.1</td>
-              <td className="text-center">168</td>
-              <td className="text-center family-history-cell">1</td>
-              <td className="actions-cell">
-                <button className="action-btn edit">Edit</button>
-                <button className="action-btn delete">Delete</button>
-              </td>
-            </tr>
-
-            {/* Row 2 */}
-            <tr>
-              <td><input type="checkbox" /></td>
-              <td className="patient-id">P-1002</td>
-              <td className="text-center">32</td>
-              <td className="text-center risk-score">41.7</td>
-              <td><span className="risk-badge low">Low</span></td>
-              <td>Female</td>
-              <td>Village</td>
-              <td className="text-center">118</td>
-              <td className="text-center">76</td>
-              <td className="text-center">172</td>
-              <td className="text-center">110</td>
-              <td className="text-center">56</td>
-              <td className="text-center">92</td>
-              <td className="text-center">22</td>
-              <td className="text-center">5.2</td>
-              <td className="text-center">22.8</td>
-              <td className="text-center">94</td>
-              <td className="text-center family-history-cell">0</td>
-              <td className="actions-cell">
-                <button className="action-btn edit">Edit</button>
-                <button className="action-btn delete">Delete</button>
-              </td>
-            </tr>
-
-            {/* Row 3 */}
-            <tr>
-              <td><input type="checkbox" /></td>
-              <td className="patient-id">P-1003</td>
-              <td className="text-center">45</td>
-              <td className="text-center risk-score">63.2</td>
-              <td><span className="risk-badge medium">Medium</span></td>
-              <td>Male</td>
-              <td>City</td>
-              <td className="text-center">132</td>
-              <td className="text-center">85</td>
-              <td className="text-center">198</td>
-              <td className="text-center">150</td>
-              <td className="text-center">44</td>
-              <td className="text-center">120</td>
-              <td className="text-center">30</td>
-              <td className="text-center">6.1</td>
-              <td className="text-center">26.3</td>
-              <td className="text-center">132</td>
-              <td className="text-center family-history-cell">2</td>
-              <td className="actions-cell">
-                <button className="action-btn edit">Edit</button>
-                <button className="action-btn delete">Delete</button>
-              </td>
-            </tr>
-
-            {/* Row 4 */}
-            <tr>
-              <td><input type="checkbox" /></td>
-              <td className="patient-id">P-1004</td>
-              <td className="text-center">61</td>
-              <td className="text-center risk-score">78.9</td>
-              <td><span className="risk-badge high">High</span></td>
-              <td>Female</td>
-              <td>City</td>
-              <td className="text-center">150</td>
-              <td className="text-center">95</td>
-              <td className="text-center">240</td>
-              <td className="text-center">210</td>
-              <td className="text-center">35</td>
-              <td className="text-center">165</td>
-              <td className="text-center">42</td>
-              <td className="text-center">7.4</td>
-              <td className="text-center">31.0</td>
-              <td className="text-center">182</td>
-              <td className="text-center family-history-cell">3</td>
-              <td className="actions-cell">
-                <button className="action-btn edit">Edit</button>
-                <button className="action-btn delete">Delete</button>
-              </td>
-            </tr>
-
-            {/* Row 5 */}
-            <tr>
-              <td><input type="checkbox" /></td>
-              <td className="patient-id">P-1005</td>
-              <td className="text-center">39</td>
-              <td className="text-center risk-score">55.6</td>
-              <td><span className="risk-badge medium">Medium</span></td>
-              <td>Male</td>
-              <td>Village</td>
-              <td className="text-center">128</td>
-              <td className="text-center">82</td>
-              <td className="text-center">190</td>
-              <td className="text-center">140</td>
-              <td className="text-center">48</td>
-              <td className="text-center">110</td>
-              <td className="text-center">28</td>
-              <td className="text-center">5.9</td>
-              <td className="text-center">24.7</td>
-              <td className="text-center">118</td>
-              <td className="text-center family-history-cell">1</td>
-              <td className="actions-cell">
-                <button className="action-btn edit">Edit</button>
-                <button className="action-btn delete">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="pagination">
-        <div className="pagination-info">
-          Showing <strong>1-5</strong> of <strong>662</strong> patients
-        </div>
-
-        <div className="pagination-controls">
-          <div className="rows-per-page">
-            Show
-            <select className="filter-select" style={{ padding: '4px 24px 4px 8px' }}>
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-            per page
+            <div className="table-controls-row">
+              <div className="search-box">
+                <input
+                    type="text"
+                    placeholder="Search by Patient ID"
+                    value={searchId}
+                    onChange={(e) => { setSearchId(e.target.value); setPage(1); }}
+                />
+              </div>
+              <div className="filter-controls">
+                <select
+                    className="filter-select"
+                    value={riskFilter}
+                    onChange={(e) => { setRiskFilter(e.target.value); setPage(1); }}
+                >
+                  <option value="all">All Risk Levels</option>
+                  <option value="high">High Risk Only</option>
+                  <option value="medium">Medium Risk Only</option>
+                  <option value="low">Low Risk Only</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <button className="page-btn">Previous</button>
-          <button className="page-btn active">1</button>
-          <button className="page-btn">2</button>
-          <button className="page-btn">3</button>
-          <button className="page-btn">4</button>
-          <span style={{ padding: '0 8px', color: 'var(--gray-500)' }}>...</span>
-          <button className="page-btn">16</button>
-          <button className="page-btn">Next</button>
+          {loading && <p style={{ padding: '1.5rem', color: '#555' }}>Loading patients…</p>}
+
+          {error && (
+              <div className="modal-error-banner" style={{ margin: '1rem' }}>
+                {error}{' '}
+                <button onClick={fetchPatients} className="btn btn-secondary" style={{ marginLeft: 8 }}>
+                  Retry
+                </button>
+              </div>
+          )}
+
+          {!loading && !error && (
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                  <tr className="column-headers">
+                    <th className="col-batch-checkbox">
+                      <input
+                          type="checkbox"
+                          checked={pageIds.length > 0 && pageIds.every((id) => selected.has(id))}
+                          onChange={() => toggleAll(pageIds)}
+                      />
+                    </th>
+                    <th className="col-patient-id">Patient ID</th>
+                    <th className="col-age">Age</th>
+                    <th className="col-score">Score</th>
+                    <th className="col-risk">Risk</th>
+                    <th className="col-sex">Sex</th>
+                    <th className="col-social">Social Life</th>
+                    <th className="col-systolic">Systolic</th>
+                    <th className="col-diastolic">Diastolic</th>
+                    <th className="col-chol">Chol</th>
+                    <th className="col-trig">Trig</th>
+                    <th className="col-hdl">HDL</th>
+                    <th className="col-ldl">LDL</th>
+                    <th className="col-vldl">VLDL</th>
+                    <th className="col-hba1c">HbA1c</th>
+                    <th className="col-bmi">BMI</th>
+                    <th className="col-rbs">RBS</th>
+                    <th className="col-actions">Actions</th>
+                  </tr>
+                  </thead>
+
+                  <tbody>
+                  {pageRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={18} style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
+                          No patients found.
+                        </td>
+                      </tr>
+                  ) : pageRows.map((p) => (
+                      <tr key={p.patient_id}>
+                        <td>
+                          <input
+                              type="checkbox"
+                              checked={selected.has(p.patient_id)}
+                              onChange={() => toggleOne(p.patient_id)}
+                          />
+                        </td>
+                        <td className="patient-id">P–{p.patient_id}</td>
+                        <td className="text-center">{p.age}</td>
+                        <td className="text-center risk-score">
+                          {p.risk_score != null ? Number(p.risk_score).toFixed(1) : '—'}
+                        </td>
+                        <td><RiskBadge level={p.risk_category} /></td>
+                        <td style={{ textTransform: 'capitalize' }}>{p.sex}</td>
+                        <td style={{ textTransform: 'capitalize' }}>{p.social_life}</td>
+                        <td className="text-center">{p.bp_systolic}</td>
+                        <td className="text-center">{p.bp_diastolic}</td>
+                        <td className="text-center">{p.cholesterol}</td>
+                        <td className="text-center">{p.triglycerides}</td>
+                        <td className="text-center">{p.hdl}</td>
+                        <td className="text-center">{p.ldl}</td>
+                        <td className="text-center">{p.vldl}</td>
+                        <td className="text-center">{p.hba1c}</td>
+                        <td className="text-center">{p.bmi}</td>
+                        <td className="text-center">{p.rbs}</td>
+                        <td className="actions-cell">
+                          <button className="action-btn edit" onClick={() => setEditPatient(p)}>
+                            Edit
+                          </button>
+                          <button className="action-btn delete" onClick={() => setDeleteTarget(p)}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                  ))}
+                  </tbody>
+                </table>
+              </div>
+          )}
+
+          {!loading && !error && (
+              <div className="pagination">
+                <div className="pagination-info">
+                  Showing{' '}
+                  <strong>
+                    {filtered.length === 0 ? 0 : startIdx + 1}–{Math.min(startIdx + pageSize, filtered.length)}
+                  </strong>{' '}
+                  of <strong>{filtered.length}</strong> patients
+                </div>
+
+                <div className="pagination-controls">
+                  <div className="rows-per-page">
+                    Show
+                    <select
+                        className="filter-select"
+                        style={{ padding: '4px 24px 4px 8px' }}
+                        value={pageSize}
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    >
+                      {PAGE_SIZE_OPTIONS.map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    per page
+                  </div>
+
+                  <button
+                      className="page-btn"
+                      disabled={safePage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </button>
+
+                  {pageNumbers().map((n, i) =>
+                      n === '...' ? (
+                          <span key={`ellipsis-${i}`} style={{ padding: '0 8px', color: 'var(--gray-500)' }}>...</span>
+                      ) : (
+                          <button
+                              key={n}
+                              className={`page-btn${safePage === n ? ' active' : ''}`}
+                              onClick={() => setPage(n)}
+                          >
+                            {n}
+                          </button>
+                      )
+                  )}
+
+                  <button
+                      className="page-btn"
+                      disabled={safePage === totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+          )}
         </div>
-      </div>
-    </div>
+      </>
   );
 };
 
