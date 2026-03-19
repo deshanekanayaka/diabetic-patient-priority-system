@@ -92,20 +92,6 @@ class RiskPrediction(BaseModel):
 
 
 def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
-    """
-    Converts raw patient data into the format the model expects.
-
-    Uses 7 features matching the training data:
-    1. HbA1c - Primary diabetes indicator
-    2. Age - Age-related risk
-    3. Sex_Encoded - Gender (male=1, female=0)
-    4. BP_Systolic - Blood pressure (upper number)
-    5. BP_Diastolic - Blood pressure (lower number)
-    6. BMI - Weight-related risk
-    7. RBS - Random blood sugar
-
-    Missing values are filled with medically safe defaults.
-    """
     patient_dict = data.model_dump()
     df = pd.DataFrame([patient_dict])
 
@@ -117,18 +103,29 @@ def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
     df["bp_diastolic"] = df["bp_diastolic"].fillna(80.0)
     df["rbs"] = df["rbs"].fillna(120.0)
 
+    # Rename columns to match training data column names
+    df = df.rename(
+        columns={
+            "hba1c": "HbA1c",
+            "age": "Age",
+            "bp_systolic": "BP_Systolic",
+            "bp_diastolic": "BP_Diastolic",
+            "bmi": "BMI",
+            "rbs": "RBS",
+        }
+    )
+
     feature_columns = [
-        "hba1c",
-        "age",
+        "HbA1c",
+        "Age",
         "Sex_Encoded",
-        "bp_systolic",
-        "bp_diastolic",
-        "bmi",
-        "rbs",
+        "BP_Systolic",
+        "BP_Diastolic",
+        "BMI",
+        "RBS",
     ]
 
     return df[feature_columns]
-
 
 def calculate_priority_score(probabilities: np.ndarray, predicted_class: int) -> float:
     """
@@ -245,4 +242,4 @@ if __name__ == "__main__":
 
     print("Starting Diabetic Risk Classification System ML Model")
     print("Visit http://localhost:5000/docs for interactive API documentation")
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

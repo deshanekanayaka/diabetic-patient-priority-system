@@ -21,11 +21,6 @@ def load_and_preprocess_data(csv_path):
     # Basic cleaning
     df = df.drop(columns=["Unnamed: 0", "FBS"])
     df.columns = df.columns.str.strip()
-    df = df.rename(
-        columns={
-            "Fiamly \n1)father\n2) mather \n3)uncle(mother's side)\n4)uncle(father's side)": "Family_History"
-        }
-    )
 
     # Process Age
     df["Age"] = df["Age"].str.replace("Years", "").str.replace("Year", "").str.strip()
