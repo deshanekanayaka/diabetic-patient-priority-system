@@ -1,35 +1,39 @@
-import React from 'react';
+// frontend/src/App.jsx
+import { SignIn, useUser } from '@clerk/clerk-react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Show, SignIn } from '@clerk/react';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
-import './index.css';
 
-function App() {
+const App = () => {
+    const { isLoaded, isSignedIn, user } = useUser();
+
+    // Wait for Clerk to finish loading — prevents "Cannot read properties of
+    // undefined (reading 'id')" crash on page refresh
+    if (!isLoaded) {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+                <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading…</p>
+            </div>
+        );
+    }
+
+    if (!isSignedIn) {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+                <SignIn />
+            </div>
+        );
+    }
+
+    // user.id is safe to access here — Clerk is loaded and user is signed in
     return (
-        <>
-            <Show when="signed-out">
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: '100vh',
-                    backgroundColor: '#f0f2f5'
-                }}>
-                    <SignIn />
-                </div>
-            </Show>
-
-            <Show when="signed-in">
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/analytics" element={<Analytics />} />
-                    </Routes>
-                </BrowserRouter>
-            </Show>
-        </>
+        <BrowserRouter>
+            <Routes>
+                <Route path="/"          element={<Dashboard clerkId={user.id} />} />
+                <Route path="/analytics" element={<Analytics clerkId={user.id} />} />
+            </Routes>
+        </BrowserRouter>
     );
-}
+};
 
 export default App;
