@@ -1,34 +1,36 @@
 -- schema.sql
--- Database structure for Diabetic Risk Classification System
+-- Run this to reset the database for Option B (Clerk auth, no clinicians table)
+-- WARNING: drops and recreates the patients table
+
 USE diabetic_db;
+
 DROP TABLE IF EXISTS patients;
+-- clinicians table is no longer needed — Clerk manages identity
 DROP TABLE IF EXISTS clinicians;
-CREATE TABLE clinicians (
-                            clinician_id INT PRIMARY KEY AUTO_INCREMENT,
-                            name VARCHAR(100) NOT NULL,
-                            email VARCHAR(100) NOT NULL UNIQUE,
-                            password VARCHAR(255) NOT NULL
-);
+
 CREATE TABLE patients (
-                          patient_id INT PRIMARY KEY AUTO_INCREMENT,
-                          age INT NOT NULL,
-                          sex VARCHAR(10) NOT NULL,
-                          social_life VARCHAR(10) NOT NULL,
-                          cholesterol DECIMAL(6, 2),
-                          triglycerides DECIMAL(6, 2),
-                          hdl DECIMAL(6, 2),
-                          ldl DECIMAL(6, 2),
-                          vldl DECIMAL(6, 2),
-                          bp_systolic DECIMAL(5, 2),
-                          bp_diastolic DECIMAL(5, 2),
-                          hba1c DECIMAL(4, 2),
-                          bmi DECIMAL(5, 2),
-                          rbs DECIMAL(6, 2),
-                          risk_score DECIMAL(5, 2),
+                          patient_id    INT PRIMARY KEY AUTO_INCREMENT,
+                          clerk_id      VARCHAR(100) NOT NULL,        -- Clerk user ID e.g. "user_2abc123"
+                          age           INT NOT NULL,
+                          sex           VARCHAR(10) NOT NULL,
+                          social_life   VARCHAR(10) NOT NULL,
+                          cholesterol   DECIMAL(6,2) NOT NULL,
+                          triglycerides DECIMAL(6,2) NOT NULL,
+                          hdl           DECIMAL(6,2) NOT NULL,
+                          ldl           DECIMAL(6,2) NOT NULL,
+                          vldl          DECIMAL(6,2) NOT NULL,
+                          bp_systolic   DECIMAL(5,2) NOT NULL,
+                          bp_diastolic  DECIMAL(5,2) NOT NULL,
+                          hba1c         DECIMAL(4,2) NOT NULL,
+                          bmi           DECIMAL(5,2) NOT NULL,
+                          rbs           DECIMAL(6,2) NOT NULL,
+                          risk_score    DECIMAL(5,2),
                           risk_category VARCHAR(10),
-                          clinician_id INT NOT NULL,
-                          FOREIGN KEY (clinician_id) REFERENCES clinicians(clinician_id)
+                          created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Index for fast clinician lookups
+CREATE INDEX idx_clerk_id ON patients (clerk_id);
+
 SHOW TABLES;
-DESCRIBE clinicians;
 DESCRIBE patients;

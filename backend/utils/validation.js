@@ -1,95 +1,110 @@
 /**
- * Validates patient data against clinical value ranges
- * Returns an array of error messages (empty array if valid)
+ * validation.js — single source of truth
+ *
+ * Copy to BOTH locations (or symlink):
+ *   backend/utils/validation.js
+ *   frontend/src/utils/validation.js
+ *
+ * validateCreate  → used by POST /api/patients  (requires clerk_id)
+ * validateUpdate  → used by PUT  /api/patients/:id  (no clerk_id needed)
+ * validateField   → used by React inputs for live/blur validation
  */
-function validatePatientData(data) {
+
+const FIELD_RANGES = {
+  age:           { min: 0,   max: 120  },
+  bp_systolic:   { min: 50,  max: 250  },
+  bp_diastolic:  { min: 30,  max: 150  },
+  cholesterol:   { min: 0,   max: 500  },
+  triglycerides: { min: 0,   max: 1000 },
+  hdl:           { min: 0,   max: 100  },
+  ldl:           { min: 0,   max: 300  },
+  vldl:          { min: 0,   max: 100  },
+  hba1c:         { min: 0,   max: 20   },
+  bmi:           { min: 10,  max: 60   },
+  rbs:           { min: 0,   max: 600  },
+};
+
+function isBlank(val) {
+  return val === undefined || val === null || val === '';
+}
+
+// Validates all shared clinical fields (used by both create and update)
+function validateClinicalFields(data) {
   const errors = [];
 
-  // Required fields
-  if (!data.age) {
-    errors.push("Age is required");
-  } else if (data.age < 0 || data.age > 120) {
-    errors.push("Age must be between 0 and 120 years");
+  // age
+  if (isBlank(data.age)) {
+    errors.push('Age is required');
+  } else {
+    const n = Number(data.age);
+    if (isNaN(n) || n < 0 || n > 120) errors.push('Age must be between 0 and 120');
   }
 
-  if (!data.sex) {
-    errors.push("Sex is required");
-  } else if (!['male', 'female'].includes(data.sex.toLowerCase())) {
+  // sex
+  if (isBlank(data.sex)) {
+    errors.push('Sex is required');
+  } else if (!['male', 'female'].includes(String(data.sex).toLowerCase())) {
     errors.push("Sex must be 'male' or 'female'");
   }
 
-  if (!data.social_life) {
-    errors.push("Social life is required");
-  } else if (!['city', 'village'].includes(data.social_life.toLowerCase())) {
+  // social_life
+  if (isBlank(data.social_life)) {
+    errors.push('Social life is required');
+  } else if (!['city', 'village'].includes(String(data.social_life).toLowerCase())) {
     errors.push("Social life must be 'city' or 'village'");
   }
 
-  if (!data.clinician_id) {
-    errors.push("Clinician ID is required");
-  }
+  // All numeric clinical fields — all required
+  const numericFields = [
+    'bp_systolic', 'bp_diastolic',
+    'cholesterol', 'triglycerides', 'hdl', 'ldl', 'vldl',
+    'hba1c', 'bmi', 'rbs',
+  ];
 
-  // Optional fields with range validation
-  if (data.cholesterol !== undefined && data.cholesterol !== null) {
-    if (data.cholesterol < 0 || data.cholesterol > 500) {
-      errors.push("Cholesterol must be between 0 and 500 mg/dL");
+  numericFields.forEach((field) => {
+    if (isBlank(data[field])) {
+      errors.push(`${field} is required`);
+    } else {
+      const n = Number(data[field]);
+      const { min, max } = FIELD_RANGES[field];
+      if (isNaN(n)) {
+        errors.push(`${field} must be a number`);
+      } else if (n < min || n > max) {
+        errors.push(`${field} must be between ${min} and ${max}`);
+      }
     }
-  }
-
-  if (data.triglycerides !== undefined && data.triglycerides !== null) {
-    if (data.triglycerides < 0 || data.triglycerides > 1000) {
-      errors.push("Triglycerides must be between 0 and 1000 mg/dL");
-    }
-  }
-
-  if (data.hdl !== undefined && data.hdl !== null) {
-    if (data.hdl < 0 || data.hdl > 100) {
-      errors.push("HDL must be between 0 and 100 mg/dL");
-    }
-  }
-
-  if (data.ldl !== undefined && data.ldl !== null) {
-    if (data.ldl < 0 || data.ldl > 300) {
-      errors.push("LDL must be between 0 and 300 mg/dL");
-    }
-  }
-
-  if (data.vldl !== undefined && data.vldl !== null) {
-    if (data.vldl < 0 || data.vldl > 100) {
-      errors.push("VLDL must be between 0 and 100 mg/dL");
-    }
-  }
-
-  if (data.bp_systolic !== undefined && data.bp_systolic !== null) {
-    if (data.bp_systolic < 50 || data.bp_systolic > 250) {
-      errors.push("Systolic BP must be between 50 and 250 mmHg");
-    }
-  }
-
-  if (data.bp_diastolic !== undefined && data.bp_diastolic !== null) {
-    if (data.bp_diastolic < 30 || data.bp_diastolic > 150) {
-      errors.push("Diastolic BP must be between 30 and 150 mmHg");
-    }
-  }
-
-  if (data.hba1c !== undefined && data.hba1c !== null) {
-    if (data.hba1c < 0 || data.hba1c > 20) {
-      errors.push("HbA1c must be between 0 and 20%");
-    }
-  }
-
-  if (data.bmi !== undefined && data.bmi !== null) {
-    if (data.bmi < 10 || data.bmi > 60) {
-      errors.push("BMI must be between 10 and 60");
-    }
-  }
-
-  if (data.rbs !== undefined && data.rbs !== null) {
-    if (data.rbs < 0 || data.rbs > 600) {
-      errors.push("Random Blood Sugar must be between 0 and 600 mg/dL");
-    }
-  }
+  });
 
   return errors;
 }
 
-module.exports = { validatePatientData };
+// POST — requires clerk_id
+function validateCreate(data) {
+  const errors = validateClinicalFields(data);
+  if (isBlank(data.clerk_id)) errors.push('clerk_id is required');
+  return errors;
+}
+
+// PUT — clerk_id not needed (patient already owns the relationship)
+function validateUpdate(data) {
+  return validateClinicalFields(data);
+}
+
+// Single-field validation for React inputs
+function validateField(name, value) {
+  if (isBlank(value)) return 'Required';
+  if (FIELD_RANGES[name]) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return 'Must be a number';
+    const { min, max } = FIELD_RANGES[name];
+    if (num < min || num > max) return `Valid range: ${min}–${max}`;
+  }
+  return null;
+}
+
+// Dual export — CommonJS (Node) + ES module (Vite)
+const _exports = { validateCreate, validateUpdate, validateField, FIELD_RANGES };
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = _exports;
+}
+export { validateCreate, validateUpdate, validateField, FIELD_RANGES };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { UserButton, useUser } from '@clerk/react';
+import { UserButton, useUser } from '@clerk/clerk-react';
 
 const Header = () => {
     const location = useLocation();

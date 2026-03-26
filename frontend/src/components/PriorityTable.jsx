@@ -1,18 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AddPatientModal from './AddPatientModal';
 import EditPatientModal from './EditPatientModal';
 
-
 const BASE_URL = 'http://localhost:3300';
-const DEFAULT_CLINICIAN_ID = 1;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const PriorityTable = () => {
-  const [patients,     setPatients]     = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(null);
+// PriorityTable no longer fetches patients itself.
+// It receives patients/loading/error from Dashboard and calls onRefresh
+// after any mutation so Dashboard re-fetches and both StatCards + table update.
+const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
   const [searchId,     setSearchId]     = useState('');
   const [riskFilter,   setRiskFilter]   = useState('all');
   const [page,         setPage]         = useState(1);
@@ -23,26 +21,6 @@ const PriorityTable = () => {
   const [deleting,     setDeleting]     = useState(false);
   const [selected,     setSelected]     = useState(new Set());
 
-  const fetchPatients = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await axios.get(`${BASE_URL}/api/patients`, {
-        params: { clinician_id: DEFAULT_CLINICIAN_ID, sortBy: 'risk' },
-      });
-      if (!res.data.success) throw new Error(res.data.message || 'Failed to fetch patients');
-      setPatients(res.data.data || []);
-      setPage(1);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Could not load patients. Is the server running?');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchPatients(); }, [fetchPatients]);
-
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -50,7 +28,7 @@ const PriorityTable = () => {
       const res = await axios.delete(`${BASE_URL}/api/patients/${deleteTarget.patient_id}`);
       if (!res.data.success) throw new Error(res.data.message);
       setDeleteTarget(null);
-      fetchPatients();
+      onRefresh(); // ← triggers Dashboard re-fetch → StatCards + table both update
     } catch (err) {
       alert('Delete failed: ' + err.message);
     } finally {
@@ -103,13 +81,13 @@ const PriorityTable = () => {
         <AddPatientModal
             isOpen={showAdd}
             onClose={() => setShowAdd(false)}
-            onPatientAdded={() => { setShowAdd(false); fetchPatients(); }}
+            onPatientAdded={() => { setShowAdd(false); onRefresh(); }}
         />
 
         <EditPatientModal
             isOpen={!!editPatient}
             onClose={() => setEditPatient(null)}
-            onPatientUpdated={() => { setEditPatient(null); fetchPatients(); }}
+            onPatientUpdated={() => { setEditPatient(null); onRefresh(); }}
             patient={editPatient}
         />
 
@@ -122,7 +100,7 @@ const PriorityTable = () => {
                   <button className="modal-close-btn" onClick={() => setDeleteTarget(null)}>✕</button>
                 </div>
                 <p className="delete-confirm-text">
-                  Are you sure you want to delete <strong>P–{deleteTarget.patient_id}</strong>?
+                  Are you sure you want to delete <strong>p{deleteTarget.patient_id}</strong>?
                 </p>
                 <p className="delete-confirm-sub">This action cannot be undone.</p>
                 <div className="modal-footer">
@@ -175,7 +153,7 @@ const PriorityTable = () => {
           {error && (
               <div className="modal-error-banner" style={{ margin: '1rem' }}>
                 {error}{' '}
-                <button onClick={fetchPatients} className="btn btn-secondary" style={{ marginLeft: 8 }}>
+                <button onClick={onRefresh} className="btn btn-secondary" style={{ marginLeft: 8 }}>
                   Retry
                 </button>
               </div>
@@ -212,7 +190,6 @@ const PriorityTable = () => {
                     <th className="col-actions">Actions</th>
                   </tr>
                   </thead>
-
                   <tbody>
                   {pageRows.length === 0 ? (
                       <tr>
@@ -229,7 +206,7 @@ const PriorityTable = () => {
                               onChange={() => toggleOne(p.patient_id)}
                           />
                         </td>
-                        <td className="patient-id">P–{p.patient_id}</td>
+                        <td className="patient-id">p{p.patient_id}</td>
                         <td className="text-center">{p.age}</td>
                         <td className="text-center risk-score">
                           {p.risk_score != null ? Number(p.risk_score).toFixed(1) : '—'}
@@ -248,12 +225,8 @@ const PriorityTable = () => {
                         <td className="text-center">{p.bmi}</td>
                         <td className="text-center">{p.rbs}</td>
                         <td className="actions-cell">
-                          <button className="action-btn edit" onClick={() => setEditPatient(p)}>
-                            Edit
-                          </button>
-                          <button className="action-btn delete" onClick={() => setDeleteTarget(p)}>
-                            Delete
-                          </button>
+                          <button className="action-btn edit" onClick={() => setEditPatient(p)}>Edit</button>
+                          <button className="action-btn delete" onClick={() => setDeleteTarget(p)}>Delete</button>
                         </td>
                       </tr>
                   ))}
@@ -271,7 +244,6 @@ const PriorityTable = () => {
                   </strong>{' '}
                   of <strong>{filtered.length}</strong> patients
                 </div>
-
                 <div className="pagination-controls">
                   <div className="rows-per-page">
                     Show
@@ -281,40 +253,23 @@ const PriorityTable = () => {
                         value={pageSize}
                         onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                     >
-                      {PAGE_SIZE_OPTIONS.map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                      ))}
+                      {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
                     per page
                   </div>
-
-                  <button
-                      className="page-btn"
-                      disabled={safePage === 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
+                  <button className="page-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                     Previous
                   </button>
-
                   {pageNumbers().map((n, i) =>
                       n === '...' ? (
-                          <span key={`ellipsis-${i}`} style={{ padding: '0 8px', color: 'var(--gray-500)' }}>...</span>
+                          <span key={`e-${i}`} style={{ padding: '0 8px', color: 'var(--gray-500)' }}>...</span>
                       ) : (
-                          <button
-                              key={n}
-                              className={`page-btn${safePage === n ? ' active' : ''}`}
-                              onClick={() => setPage(n)}
-                          >
+                          <button key={n} className={`page-btn${safePage === n ? ' active' : ''}`} onClick={() => setPage(n)}>
                             {n}
                           </button>
                       )
                   )}
-
-                  <button
-                      className="page-btn"
-                      disabled={safePage === totalPages}
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
+                  <button className="page-btn" disabled={safePage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                     Next
                   </button>
                 </div>
