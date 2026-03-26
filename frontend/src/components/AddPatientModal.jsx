@@ -1,21 +1,14 @@
-// frontend/src/components/AddPatientModal.jsx
-//
-// Thin wrapper around PatientFormModal.
-// Responsibility: POST the payload to the API. Nothing else.
-//
-// clerk_id is read directly from Clerk here using useUser().
-// This avoids depending on the prop chain App→Dashboard→PriorityTable→here,
-// where any stale file in the chain would silently pass undefined.
+// Handles what happens when PatientFormModal form is submitted (POST).
 
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useUser } from '@clerk/clerk-react';
 import PatientFormModal, { EMPTY_FORM } from './PatientFormModal';
 
-const BASE_URL = 'http://localhost:3300';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
-    const { user } = useUser();           // Clerk user — always up to date
+    const { user } = useUser();           // Clerk user
     const [saving,   setSaving]   = useState(false);
     const [apiError, setApiError] = useState(null);
 

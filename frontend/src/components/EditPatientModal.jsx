@@ -1,15 +1,10 @@
-// frontend/src/components/EditPatientModal.jsx
-//
-// Thin wrapper around PatientFormModal.
-// Responsibility: PUT the payload to the API. Nothing else.
-// Note: clerk_id is NOT sent — the patient's clinician ownership is already
-// set in the database (validateUpdate on the backend doesn't require it).
+// Handles what happens when PatientFormModal form is submitted (PUT)
 
 import React, { useState } from 'react';
 import axios from 'axios';
 import PatientFormModal from './PatientFormModal';
 
-const BASE_URL = 'http://localhost:3300';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 // Convert a patient record from the DB into the form's shape.
 // DB values can be numbers or null; the form expects strings or ''.
