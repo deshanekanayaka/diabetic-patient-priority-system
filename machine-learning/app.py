@@ -1,11 +1,3 @@
-"""
-FastAPI application for real-time risk predictions using 7 key features
-
-PORT: 5000
-START: uvicorn app:app --reload --port 5000
-DOCS: http://localhost:5000/docs
-"""
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
@@ -241,5 +233,4 @@ if __name__ == "__main__":
     import uvicorn
 
     print("Starting Diabetic Risk Classification System ML Model")
-    print("Visit http://localhost:5000/docs for interactive API documentation")
     uvicorn.run(app, host="0.0.0.0", port=8001)
