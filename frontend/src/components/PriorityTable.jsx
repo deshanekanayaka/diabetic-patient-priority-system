@@ -3,7 +3,7 @@ import axios from 'axios';
 import AddPatientModal from './AddPatientModal';
 import EditPatientModal from './EditPatientModal';
 
-const BASE_URL = 'http://localhost:3300';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -49,10 +49,15 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         return allChecked ? new Set() : new Set([...prev, ...visibleIds]);
       });
 
+  // Search
   const filtered = patients.filter((p) => {
-    const matchSearch = searchId.trim() === '' || String(p.patient_id).includes(searchId.trim());
-    const matchRisk   = riskFilter === 'all' || (p.risk_category || '').toLowerCase() === riskFilter;
-    return matchSearch && matchRisk;
+    if (searchId.trim() !== '') {
+      // Strip leading 'p' or 'P' so typing "p8", "P8", or "8" all find patient 8
+      const rawSearch = searchId.trim().replace(/^p/i, '');
+      if (!String(p.patient_id).includes(rawSearch)) return false;
+    }
+    if (riskFilter !== 'all' && (p.risk_category || '').toLowerCase() !== riskFilter) return false;
+    return true;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -128,7 +133,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
               <div className="search-box">
                 <input
                     type="text"
-                    placeholder="Search by Patient ID"
+                    placeholder="Search by Patient ID (e.g. p8 or 8)"
                     value={searchId}
                     onChange={(e) => { setSearchId(e.target.value); setPage(1); }}
                 />
