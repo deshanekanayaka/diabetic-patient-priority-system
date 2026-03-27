@@ -5,7 +5,7 @@ import Header from '../components/Header';
 import StatCards from '../components/StatCards';
 import PriorityTable from '../components/PriorityTable';
 
-const BASE_URL = 'http://localhost:3300';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const Dashboard = ({ clerkId }) => {
     const [patients, setPatients] = useState([]);
