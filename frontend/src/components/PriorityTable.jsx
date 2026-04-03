@@ -49,16 +49,18 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         return allChecked ? new Set() : new Set([...prev, ...visibleIds]);
       });
 
+
   // Search
-  const filtered = patients.filter((p) => {
-    if (searchId.trim() !== '') {
-      // Strip leading 'p' or 'P' so typing "p8", "P8", or "8" all find patient 8
-      const rawSearch = searchId.trim().replace(/^p/i, '');
-      if (!String(p.patient_id).includes(rawSearch)) return false;
-    }
-    if (riskFilter !== 'all' && (p.risk_category || '').toLowerCase() !== riskFilter) return false;
-    return true;
-  });
+  const filtered = patients
+      .filter((p) => {
+        if (searchId.trim() !== '') {
+          const rawSearch = searchId.trim().replace(/^p/i, '');
+          if (!String(p.patient_id).includes(rawSearch)) return false;
+        }
+        if (riskFilter !== 'all' && (p.risk_category || '').toLowerCase() !== riskFilter) return false;
+        return true;
+      })
+      .sort((a, b) => (b.risk_score ?? -Infinity) - (a.risk_score ?? -Infinity)); // ← add this
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage   = Math.min(page, totalPages);
