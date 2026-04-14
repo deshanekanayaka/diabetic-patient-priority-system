@@ -124,8 +124,8 @@ const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, savin
                         Blood Pressure (mmHg) <span className="modal-required-star">*</span>
                     </p>
                     <div className="modal-grid-2">
-                        <Field label="Systolic"  placeholder="50 – 250" registration={register('bp_systolic')}  error={errors.bp_systolic}  />
-                        <Field label="Diastolic" placeholder="30 – 150" registration={register('bp_diastolic')} error={errors.bp_diastolic} />
+                        <Field label="Systolic"  placeholder="5 – 25"  registration={register('bp_systolic')}  error={errors.bp_systolic}  />
+                        <Field label="Diastolic" placeholder="3 – 15"  registration={register('bp_diastolic')} error={errors.bp_diastolic} />
                     </div>
 
                     {/* Lipid Profile (mg/dL) */}
@@ -145,8 +145,8 @@ const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, savin
                         Blood Sugar &amp; Metabolic <span className="modal-required-star">*</span>
                     </p>
                     <div className="modal-grid-3">
-                        <Field label="HbA1c (%)"                  placeholder="0 – 20"  registration={register('hba1c')} error={errors.hba1c} />
-                        <Field label="BMI (kg/m²)"                placeholder="10 – 60" registration={register('bmi')}   error={errors.bmi}   />
+                        <Field label="HbA1c (%)"  placeholder="0 – 20"  registration={register('hba1c')} error={errors.hba1c} />
+                        <Field label="BMI (kg/m²)" placeholder="0 – 60" registration={register('bmi')} error={errors.bmi} />
                         <Field label="Random Blood Sugar (mg/dL)" placeholder="0 – 600" registration={register('rbs')}   error={errors.rbs}   />
                     </div>
 
