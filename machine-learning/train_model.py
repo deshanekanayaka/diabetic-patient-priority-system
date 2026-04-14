@@ -55,11 +55,6 @@ def load_and_preprocess_data(csv_path):
 
 
 def get_hba1c_points(hba1c):
-    """
-    Calculate risk points based on HbA1c levels.
-    HbA1c >= 6.5: Diabetic range (40 points)
-    HbA1c >= 5.7: Pre-diabetic range (20 points)
-    """
     if hba1c >= 6.5:
         return 40
     elif hba1c >= 5.7:
@@ -68,11 +63,6 @@ def get_hba1c_points(hba1c):
 
 
 def get_rbs_points(rbs):
-    """
-    Calculate risk points based on Random Blood Sugar.
-    RBS >= 200: High risk (20 points)
-    RBS >= 140: Elevated (10 points)
-    """
     if rbs >= 200:
         return 20
     elif rbs >= 140:
@@ -81,11 +71,6 @@ def get_rbs_points(rbs):
 
 
 def get_bmi_points(bmi):
-    """
-    Calculate risk points based on Body Mass Index.
-    BMI >= 30: Obese (15 points)
-    BMI >= 25: Overweight (8 points)
-    """
     if bmi >= 30:
         return 15
     elif bmi >= 25:
@@ -94,24 +79,14 @@ def get_bmi_points(bmi):
 
 
 def get_bp_points(systolic, diastolic):
-    """
-    Calculate risk points based on Blood Pressure.
-    Stage 2 Hypertension (140/90): 15 points
-    Stage 1 Hypertension (130/85): 8 points
-    """
-    if systolic >= 140 or diastolic >= 90:
+    if systolic >= 14.0 or diastolic >= 9.0:
         return 15
-    elif systolic >= 130 or diastolic >= 85:
+    elif systolic >= 13.0 or diastolic >= 8.5:
         return 8
     return 0
 
 
 def get_age_points(age):
-    """
-    Calculate risk points based on age.
-    Age >= 65: Senior (10 points)
-    Age >= 45: Middle-aged (5 points)
-    """
     if age >= 65:
         return 10
     elif age >= 45:
@@ -120,11 +95,6 @@ def get_age_points(age):
 
 
 def calculate_risk_level(row):
-    """
-    Calculate overall risk category for a patient.
-    Returns: 0 (Low), 1 (Medium), or 2 (High)
-    """
-    # Sum points from all health indicators
     points = (
         get_hba1c_points(row["HbA1c"])
         + get_rbs_points(row["RBS"])
@@ -133,19 +103,15 @@ def calculate_risk_level(row):
         + get_age_points(row["Age"])
     )
 
-    # Convert total points to risk category
     if points < 34:
-        return 0  # Low risk
+        return 0
     elif points < 67:
-        return 1  # Medium risk
+        return 1
     else:
-        return 2  # High risk
+        return 2
 
 
 def prepare_features(df):
-    """
-    Prepares feature matrix and target vector.
-    """
     print()
     print("STEP 2: PREPARING FEATURES")
 
@@ -168,9 +134,6 @@ def prepare_features(df):
 
 
 def split_data(x, y):
-    """
-    Splits data into training and testing sets.
-    """
     print()
     print("STEP 3: SPLITTING DATA")
 
@@ -194,9 +157,6 @@ def fit_and_evaluate_model(
     max_features=0.8,
     max_samples=0.8,
 ):
-    """
-    Fits Random Forest model and evaluates performance.
-    """
     random_forest = RandomForestClassifier(
         random_state=0,
         max_depth=max_depth,
@@ -220,13 +180,9 @@ def fit_and_evaluate_model(
 
 
 def hyperparameter_tuning(x_train, y_train):
-    """
-    Performs GridSearchCV to find optimal hyperparameters.
-    """
     print()
     print("STEP 5: HYPERPARAMETER TUNING WITH GRIDSEARCHCV")
 
-    # Parameter grid
     param_grid = [
         {
             "max_depth": [3, 5, 7, 10],
@@ -243,7 +199,6 @@ def hyperparameter_tuning(x_train, y_train):
     print(f"  max_samples: {param_grid[0]['max_samples']}")
     print()
 
-    # GridSearchCV
     model = RandomForestClassifier()
     search = GridSearchCV(estimator=model, param_grid=param_grid, cv=3, verbose=1)
     search.fit(x_train, y_train)
@@ -259,17 +214,12 @@ def hyperparameter_tuning(x_train, y_train):
 
 
 def analyze_results(search):
-    """
-    Analyzes and displays GridSearch results.
-    """
     print()
     print("STEP 6: ANALYZING RESULTS")
 
-    # Create results DataFrame
     results = pd.DataFrame(search.cv_results_)
     results.sort_values("mean_test_score", inplace=True, ascending=False)
 
-    # Display top 10
     print()
     print("Top 10 Parameter Combinations:")
     top10 = results[
@@ -289,15 +239,10 @@ def analyze_results(search):
 
 
 def k_fold_validation(model, x, y):
-    """
-    Performs K-Fold Cross-Validation to validate model accuracy.
-    """
     print()
     print("STEP 7.5: K-FOLD CROSS-VALIDATION")
 
-    # Stratified K-Fold ensures balanced class distribution in each fold
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
     cv_scores = cross_val_score(model, x, y, cv=skf, scoring="accuracy")
 
     print()
@@ -312,9 +257,6 @@ def k_fold_validation(model, x, y):
 
 
 def feature_importance_analysis(model, feature_columns):
-    """
-    Analyzes and displays feature importance.
-    """
     print()
     print("STEP 8: FEATURE IMPORTANCE ANALYSIS")
 
@@ -331,9 +273,6 @@ def feature_importance_analysis(model, feature_columns):
 
 
 def save_model(model, output_path="models/random_forest_model.pkl"):
-    """
-    Saves the trained model.
-    """
     print()
     print("STEP 9: SAVING MODEL")
 
@@ -349,9 +288,6 @@ def save_model(model, output_path="models/random_forest_model.pkl"):
 
 
 def main():
-    """
-    Main training pipeline matching notebook structure.
-    """
     print()
     print("Diabetic Patient Priority System")
 
@@ -408,6 +344,30 @@ def main():
     # Step 9: Save model
     save_model(best_model)
 
+    # ── Risk scores for first 10 dataset records ───────────────────────────
+    def _priority_score(probs, cls):
+        if cls == 2:   return round(70 + probs[2] * 30, 2)
+        elif cls == 1: return round(40 + probs[1] * 30, 2)
+        else:          return round(probs[0] * 40, 2)
+
+    def _risk_category(score):
+        if score >= 70:   return 'high'
+        elif score >= 40: return 'medium'
+        else:             return 'low'
+
+    first_10 = x.head(10)
+    preds    = best_model.predict(first_10)
+    probas   = best_model.predict_proba(first_10)
+
+    print()
+    print("  First 10 Dataset Records — Risk Scores")
+    print(f"  {'#':<4} {'risk_score':<12} {'risk_category'}")
+    print("  " + "-" * 32)
+    for i, (cls, prob) in enumerate(zip(preds, probas), 1):
+        score    = _priority_score(prob, cls)
+        category = _risk_category(score)
+        print(f"  {i:<4} {score:<12} {category}")
+
     # Final summary
     print()
     print("=" * 60)
@@ -422,7 +382,7 @@ def main():
     print()
     print("Next Steps:")
     print("  1. Use the saved model in your FastAPI application")
-    print("  2. Run: uvicorn app:app --reload --port 5000")
+    print("  2. Run: uvicorn app:app --reload --port 8001")
     print()
 
 
