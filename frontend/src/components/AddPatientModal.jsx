@@ -22,10 +22,23 @@ const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
             setSaving(true);
             setApiError(null);
 
-            const res = await axios.post(`${BASE_URL}/api/patients`, {
+            const parsed = {
                 ...payload,
-                clerk_id: user.id,   // read directly from Clerk, never undefined
-            });
+                clerk_id:      user.id,
+                age:           parseInt(payload.age, 10),
+                cholesterol:   parseFloat(payload.cholesterol),
+                triglycerides: parseFloat(payload.triglycerides),
+                hdl:           parseFloat(payload.hdl),
+                ldl:           parseFloat(payload.ldl),
+                vldl:          parseFloat(payload.vldl),
+                bp_systolic:   parseFloat(payload.bp_systolic),   // dataset format e.g. 12.0
+                bp_diastolic:  parseFloat(payload.bp_diastolic),  // dataset format e.g. 8.0
+                hba1c:         parseFloat(payload.hba1c),
+                bmi:           parseFloat(payload.bmi),
+                rbs:           parseFloat(payload.rbs),
+            };
+
+            const res = await axios.post(`${BASE_URL}/api/patients`, parsed);
 
             if (!res.data.success) {
                 setApiError(res.data.errors?.join(', ') ?? res.data.message ?? 'Failed to add patient.');

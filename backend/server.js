@@ -11,6 +11,7 @@ const db = require('./config/database');
 // Import routes
 const authRoutes = require('./routes/auth');
 const patientRoutes = require('./routes/patients')
+const analyticsRouter = require('./routes/analytics');
 
 // Create Express application
 const app = express();
@@ -106,6 +107,9 @@ app.use('/api/auth', authRoutes);
 
 // Patient routes (CRUD)
 app.use('/api/patients', patientRoutes);
+
+//Analytics route (Charts)
+app.use('/api/analytics', analyticsRouter);
 
 // TODO: Add dashboard route
 

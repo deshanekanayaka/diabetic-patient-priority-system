@@ -51,11 +51,9 @@ class PatientData(BaseModel):
     age: int = Field(..., ge=0, le=120, description="Patient age in years")
     sex: str = Field(..., description="Patient sex: 'male' or 'female'")
     hba1c: Optional[float] = Field(None, ge=0, le=20, description="HbA1c percentage")
-    bmi: Optional[float] = Field(None, ge=10, le=60, description="BMI")
-    bp_systolic: Optional[float] = Field(None, ge=50, le=250, description="Systolic BP")
-    bp_diastolic: Optional[float] = Field(
-        None, ge=30, le=150, description="Diastolic BP"
-    )
+    bmi: Optional[float] = Field(None, ge=0, le=60, description="BMI")
+    bp_systolic: Optional[float] = Field(None, ge=5, le=25, description="Systolic BP (dataset format e.g. 12.0 = 120mmHg)")
+    bp_diastolic: Optional[float] = Field(None, ge=3, le=15, description="Diastolic BP (dataset format e.g. 8.0 = 80mmHg)")
     rbs: Optional[float] = Field(None, ge=0, le=600, description="Random Blood Sugar")
 
     @field_validator("sex")
@@ -91,8 +89,8 @@ def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
 
     df["hba1c"] = df["hba1c"].fillna(5.7)
     df["bmi"] = df["bmi"].fillna(25.0)
-    df["bp_systolic"] = df["bp_systolic"].fillna(120.0)
-    df["bp_diastolic"] = df["bp_diastolic"].fillna(80.0)
+    df["bp_systolic"] = df["bp_systolic"].fillna(12.0)
+    df["bp_diastolic"] = df["bp_diastolic"].fillna(8.0)
     df["rbs"] = df["rbs"].fillna(120.0)
 
     # Rename columns to match training data column names

@@ -942,3 +942,7 @@ input[type="checkbox"] {
   font-size: 13px;
   color: #6b7280;
 }
+@keyframes shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}

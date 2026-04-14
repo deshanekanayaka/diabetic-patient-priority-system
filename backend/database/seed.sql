@@ -1,22 +1,21 @@
 USE diabetic_db;
 
--- Clear existing data
 DELETE FROM patients;
-
--- Reset auto-increment so IDs stay predictable in dev
 ALTER TABLE patients AUTO_INCREMENT = 1;
 
--- Seed patients (data from your CSV export)
 INSERT INTO patients
 (clerk_id, age, sex, social_life, cholesterol, triglycerides, hdl, ldl, vldl,
  bp_systolic, bp_diastolic, hba1c, bmi, rbs, risk_score, risk_category)
 VALUES
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 52, 'male',   'city',    238.00, 195.00, 36.00, 155.00, 39.00, 148.00, 93.00, 8.10, 30.80, 172.00, 82.40, 'high'),
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 60, 'male',   'city',    245.00, 210.00, 33.00, 162.00, 42.00, 155.00, 97.00, 8.60, 32.40, 188.00, 91.20, 'high'),
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 44, 'female', 'village', 192.00, 140.00, 48.00, 115.00, 28.00, 128.00, 83.00, 6.40, 25.60, 118.00, 54.70, 'medium'),
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 48, 'male',   'city',    205.00, 158.00, 42.00, 122.00, 31.00, 132.00, 86.00, 6.80, 27.30, 128.00, 61.90, 'medium'),
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 35, 'female', 'village', 172.00, 108.00, 58.00,  92.00, 21.00, 118.00, 77.00, 5.40, 23.10,  98.00, 28.30, 'low'),
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 40, 'male',   'village',  50.00,  50.00, 50.00,  50.00, 50.00,  50.00, 50.00,10.00, 50.00, 100.00, 65.96, 'medium'),
-    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 30, 'male',   'city',     30.00,  30.00, 30.00,  30.00, 30.00,  50.00, 30.00, 1.00, 10.00,  50.00, 38.70, 'low');
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 51, 'female', 'city',    174.00,  92.00, 35.00, 125.00, 18.00, 12.0, 8.0, 4.9,  34.30, 94.0,   38.54, 'low'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 42, 'male',   'city',    153.00,  72.00, 34.00, 105.00, 14.00, 11.0, 7.5, 5.1,  28.20, 105.0,  40.00, 'medium'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 34, 'female', 'city',    144.00,  99.00, 36.00, 108.00, 19.00, 12.0, 8.0, 5.0,  23.03, 102.0,  40.00, 'medium'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 53, 'male',   'city',    159.00, 297.00, 27.00,  99.00, 59.00, 12.0, 9.0, 6.7,  20.80, 145.5,  88.10, 'high'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 37, 'male',   'city',    262.00, 234.00, 30.00, 192.00, 47.00, 11.0, 7.5, 5.2,  29.70, 93.0,   39.94, 'low'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 26, 'male',   'city',    122.00,  91.00, 29.00,  83.00, 18.00, 11.5, 5.5, 4.8,  25.70, 91.0,   40.00, 'medium'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 64, 'female', 'village', 104.00, 164.00, 34.00,  41.00, 33.00,  7.6, 5.2, 9.8,  34.60, 234.5,  96.89, 'high'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 24, 'male',   'city',    145.00, 104.00, 26.00,  99.00, 21.00, 13.0, 8.0, 4.7,  30.40, 99.0,   39.74, 'low'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 58, 'female', 'village', 165.00, 123.00, 44.00,  92.00, 25.00, 13.0, 7.0, 5.4,  35.30, 98.0,   33.58, 'low'),
+    ('user_3BUc8irbsRLEN45Gdo4jInGbnjW', 72, 'female', 'city',    153.00, 110.00, 35.00,  98.00, 47.00, 15.0, 7.0, 5.9,  28.20, 122.6,  68.25, 'medium');
 
 SELECT CONCAT('Seeded ', COUNT(*), ' patients') AS status FROM patients;
