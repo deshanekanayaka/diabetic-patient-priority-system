@@ -8,8 +8,8 @@ import os
 from typing import Optional
 
 app = FastAPI(
-    title="Diabetic Risk Classification API",
-    description="ML service for calculating patient risk scores using Random Forest",
+    title="Diabetic Patient Priority System API",
+    description="Random Forest classification for calculating patient risk scores",
     version="1.0.0",
 )
 
@@ -32,7 +32,6 @@ try:
 except FileNotFoundError:
     print("Model file not found. Please run train_model.py first")
     model = None
-
 
 class PatientData(BaseModel):
     """
@@ -64,7 +63,6 @@ class PatientData(BaseModel):
         if v.lower() not in ["male", "female"]:
             raise ValueError("Sex must be 'male' or 'female'")
         return v.lower()
-
 
 class RiskPrediction(BaseModel):
     """
@@ -141,7 +139,6 @@ def calculate_priority_score(probabilities: np.ndarray, predicted_class: int) ->
 
     return priority_score
 
-
 def calculate_risk_category(priority_score: float) -> str:
     """
     Converts numeric score to risk category.
@@ -158,14 +155,13 @@ def calculate_risk_category(priority_score: float) -> str:
     else:
         return "low"
 
-
 @app.get("/")
 def read_root():
     """
     Health check endpoint.
     """
     return {
-        "service": "Diabetic Risk Classification System - ML Model",
+        "service": "Diabetic Patient Priority System - ML Model",
         "status": "running",
         "version": "1.0.0",
         "model_loaded": model is not None,
@@ -173,20 +169,6 @@ def read_root():
         "ml_model": "Random Forest Classifier",
         "features_used": 7,
     }
-
-
-@app.get("/health")
-def health_check():
-    """
-    Detailed health check showing model status.
-    """
-    return {
-        "status": "healthy" if model is not None else "unhealthy",
-        "model_loaded": model is not None,
-        "model_path": MODEL_PATH,
-        "model_type": type(model).__name__ if model is not None else None,
-    }
-
 
 @app.post("/predict", response_model=RiskPrediction)
 def predict_risk(patient: PatientData):
@@ -228,9 +210,8 @@ def predict_risk(patient: PatientData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
-
 if __name__ == "__main__":
     import uvicorn
 
-    print("Starting Diabetic Risk Classification System ML Model")
+    print("Starting Diabetic Patient Priority System ML Model")
     uvicorn.run(app, host="0.0.0.0", port=8001)
