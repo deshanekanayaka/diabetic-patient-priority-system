@@ -12,8 +12,6 @@ def load_and_preprocess_data(csv_path):
     """
     Loads and prepares the diabetes dataset.
     """
-    print("STEP 1: LOADING AND PREPROCESSING DATA")
-
     # Load data
     df = pd.read_csv(csv_path)
     print(f"Loaded {len(df)} patient records")
@@ -53,14 +51,12 @@ def load_and_preprocess_data(csv_path):
 
     return df
 
-
 def get_hba1c_points(hba1c):
     if hba1c >= 6.5:
         return 40
     elif hba1c >= 5.7:
         return 20
     return 0
-
 
 def get_rbs_points(rbs):
     if rbs >= 200:
@@ -69,14 +65,12 @@ def get_rbs_points(rbs):
         return 10
     return 0
 
-
 def get_bmi_points(bmi):
     if bmi >= 30:
         return 15
     elif bmi >= 25:
         return 8
     return 0
-
 
 def get_bp_points(systolic, diastolic):
     if systolic >= 14.0 or diastolic >= 9.0:
@@ -85,14 +79,12 @@ def get_bp_points(systolic, diastolic):
         return 8
     return 0
 
-
 def get_age_points(age):
     if age >= 65:
         return 10
     elif age >= 45:
         return 5
     return 0
-
 
 def calculate_risk_level(row):
     points = (
@@ -110,10 +102,9 @@ def calculate_risk_level(row):
     else:
         return 2
 
-
 def prepare_features(df):
     print()
-    print("STEP 2: PREPARING FEATURES")
+    print("Preparing features")
 
     feature_columns = [
         "HbA1c",
@@ -132,10 +123,9 @@ def prepare_features(df):
 
     return x, y, feature_columns
 
-
 def split_data(x, y):
     print()
-    print("STEP 3: SPLITTING DATA")
+    print("Splitting Data")
 
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=0.2, random_state=42, stratify=y
@@ -145,7 +135,6 @@ def split_data(x, y):
     print(f"Testing set:  {x_test.shape}")
 
     return x_train, x_test, y_train, y_test
-
 
 def fit_and_evaluate_model(
     x_train,
@@ -178,10 +167,9 @@ def fit_and_evaluate_model(
 
     return model
 
-
 def hyperparameter_tuning(x_train, y_train):
     print()
-    print("STEP 5: HYPERPARAMETER TUNING WITH GRIDSEARCHCV")
+    print("HYPERPARAMETER TUNING WITH GRIDSEARCH CV")
 
     param_grid = [
         {
@@ -212,10 +200,9 @@ def hyperparameter_tuning(x_train, y_train):
 
     return search
 
-
 def analyze_results(search):
     print()
-    print("STEP 6: ANALYZING RESULTS")
+    print("Displaying results")
 
     results = pd.DataFrame(search.cv_results_)
     results.sort_values("mean_test_score", inplace=True, ascending=False)
@@ -237,10 +224,9 @@ def analyze_results(search):
 
     return results
 
-
 def k_fold_validation(model, x, y):
     print()
-    print("STEP 7.5: K-FOLD CROSS-VALIDATION")
+    print("K-FOLD CROSS-VALIDATION")
 
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     cv_scores = cross_val_score(model, x, y, cv=skf, scoring="accuracy")
@@ -255,10 +241,9 @@ def k_fold_validation(model, x, y):
 
     return cv_scores
 
-
 def feature_importance_analysis(model, feature_columns):
     print()
-    print("STEP 8: FEATURE IMPORTANCE ANALYSIS")
+    print("FEATURE IMPORTANCE ANALYSIS")
 
     feature_importance = pd.DataFrame(
         {"feature": feature_columns, "importance": model.feature_importances_}
@@ -271,10 +256,9 @@ def feature_importance_analysis(model, feature_columns):
 
     return feature_importance
 
-
 def save_model(model, output_path="models/random_forest_model.pkl"):
     print()
-    print("STEP 9: SAVING MODEL")
+    print("SAVING MODEL")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -283,9 +267,6 @@ def save_model(model, output_path="models/random_forest_model.pkl"):
 
     file_size = os.path.getsize(output_path) / 1024
     print(f"Model saved to: {output_path}")
-    print(f"File size: {file_size:.2f} KB")
-    print("Model is ready for deployment!")
-
 
 def main():
     print()
@@ -298,29 +279,29 @@ def main():
         print(f"Error: Dataset not found at {CSV_PATH}")
         return
 
-    # Step 1: Load and preprocess
+    #Load and preprocess
     df = load_and_preprocess_data(CSV_PATH)
 
-    # Step 2: Prepare features
+    #Prepare features
     x, y, feature_columns = prepare_features(df)
 
-    # Step 3: Split data
+    #Split data
     x_train, x_test, y_train, y_test = split_data(x, y)
 
-    # Step 4: Train baseline model
+    #Train baseline model
     print()
-    print("STEP 4: TRAINING BASELINE MODEL")
+    print("TRAINING BASELINE MODEL")
     model = fit_and_evaluate_model(x_train, x_test, y_train, y_test)
 
-    # Step 5: Hyperparameter tuning
+    #Hyperparameter tuning
     search = hyperparameter_tuning(x_train, y_train)
 
-    # Step 6: Analyze results
+    #Analyze results
     results = analyze_results(search)
 
-    # Step 7: Evaluate best model on test set
+    #Evaluate best model on test set
     print()
-    print("STEP 7: EVALUATING BEST MODEL ON TEST SET")
+    print("EVALUATING BEST MODEL ON TEST SET")
     best_model = search.best_estimator_
 
     y_pred_best = best_model.predict(x_test)
@@ -335,56 +316,23 @@ def main():
     print()
     print(classification_report(y_test, y_pred_best))
 
-    # Step 7.5: K-Fold Cross-Validation
+    #K-Fold Cross-Validation
     cv_scores = k_fold_validation(best_model, x, y)
 
-    # Step 8: Feature importance
+    #Feature importance
     feature_importance = feature_importance_analysis(best_model, feature_columns)
 
-    # Step 9: Save model
+    #Save model
     save_model(best_model)
-
-    # ── Risk scores for first 10 dataset records ───────────────────────────
-    def _priority_score(probs, cls):
-        if cls == 2:   return round(70 + probs[2] * 30, 2)
-        elif cls == 1: return round(40 + probs[1] * 30, 2)
-        else:          return round(probs[0] * 40, 2)
-
-    def _risk_category(score):
-        if score >= 70:   return 'high'
-        elif score >= 40: return 'medium'
-        else:             return 'low'
-
-    first_10 = x.head(10)
-    preds    = best_model.predict(first_10)
-    probas   = best_model.predict_proba(first_10)
-
-    print()
-    print("  First 10 Dataset Records — Risk Scores")
-    print(f"  {'#':<4} {'risk_score':<12} {'risk_category'}")
-    print("  " + "-" * 32)
-    for i, (cls, prob) in enumerate(zip(preds, probas), 1):
-        score    = _priority_score(prob, cls)
-        category = _risk_category(score)
-        print(f"  {i:<4} {score:<12} {category}")
 
     # Final summary
     print()
-    print("=" * 60)
-    print("MODEL TRAINING COMPLETED")
-    print("=" * 60)
-    print()
-    print("Summary:")
     print(f"  Test Set Accuracy: {best_accuracy*100:.2f}%")
     print(
         f"  Cross-Validation Accuracy: {cv_scores.mean()*100:.2f}% (±{cv_scores.std()*100:.2f}%)"
     )
+    print("Run: uvicorn app:app --reload --port 8001")
     print()
-    print("Next Steps:")
-    print("  1. Use the saved model in your FastAPI application")
-    print("  2. Run: uvicorn app:app --reload --port 8001")
-    print()
-
 
 if __name__ == "__main__":
     main()
