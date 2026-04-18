@@ -13,7 +13,7 @@ const getAnalytics = async (req, res) => {
         // Groups each patient into an age band (20-29, 30-39, etc.)
         // then counts how many fall into each risk category within that band.
         // Result shape: [{ age_group: '50-59', risk_category: 'high', count: 1 }, ...]
-        const { data: ageDistribution } = await query(
+        const ageDistribution = await query(
             `SELECT
                 CASE
                     WHEN age BETWEEN 20 AND 29 THEN '20-29'
@@ -38,7 +38,7 @@ const getAnalytics = async (req, res) => {
         // FIELD() in ORDER BY forces a fixed order: low → medium → high
         // instead of alphabetical order.
         // Result shape: [{ risk_category: 'low', count: 4 }, ...]
-        const { data: scoreDistribution } = await query(
+        const scoreDistribution = await query(
             `SELECT
                 risk_category,
                 COUNT(*) AS count
@@ -49,8 +49,11 @@ const getAnalytics = async (req, res) => {
             [clerk_id]
         );
 
-        // Send both datasets to the frontend in a single response
-        res.json({ ageDistribution, scoreDistribution });
+        // Convert count to a number
+        res.json({
+            ageDistribution: ageDistribution.map(r => ({ ...r, count: Number(r.count) })),
+            scoreDistribution: scoreDistribution.map(r => ({ ...r, count: Number(r.count) })),
+        });
 
     } catch (error) {
         console.error('Analytics query error:', error);
