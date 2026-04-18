@@ -38,7 +38,7 @@ const Field = ({ label, placeholder, registration, error }) => (
 );
 
 // Main component
-const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, saving, apiError }) => {
+const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, saving, savingError }) => {
 
     const {
         register,
@@ -150,7 +150,7 @@ const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, savin
                         <Field label="Random Blood Sugar (mg/dL)" placeholder="0 – 600" registration={register('rbs')}   error={errors.rbs}   />
                     </div>
 
-                    {apiError && <div className="modal-error-banner">{apiError}</div>}
+                    {savingError && <div className="modal-error-banner">{savingError}</div>}
 
                     <div className="modal-footer">
                         <button type="button" className="btn-modal-cancel" onClick={handleClose}>
