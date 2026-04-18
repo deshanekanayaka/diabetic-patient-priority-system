@@ -4,13 +4,17 @@ import AddPatientModal from './AddPatientModal';
 import EditPatientModal from './EditPatientModal';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-// PriorityTable no longer fetches patients itself.
-// It receives patients/loading/error from Dashboard and calls onRefresh
-// after any mutation so Dashboard re-fetches and both StatCards + table update.
+// Defined outside the component so it isn't recreated on every render
+const RiskBadge = ({ level = '' }) => (
+    <span className={`risk-badge ${level.toLowerCase()}`}>{level || '—'}</span>
+);
+
+// Receives patients/loading/error from Dashboard and calls onRefresh
+// after any mutation so Dashboard re-fetches and StatCards + table both update
 const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
+
     const [searchId,     setSearchId]     = useState('');
     const [riskFilter,   setRiskFilter]   = useState('all');
     const [page,         setPage]         = useState(1);
@@ -19,9 +23,11 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
     const [editPatient,  setEditPatient]  = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting,     setDeleting]     = useState(false);
-    const [selected,     setSelected]     = useState(new Set());
+    const [selected,     setSelected]     = useState(new Set()); // reserved for future bulk actions
     const [showSuccess,  setShowSuccess]  = useState(false);
+    const [savedId,      setSavedId]      = useState(null);
 
+    // DELETE
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         try {
@@ -29,7 +35,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
             const res = await axios.delete(`${BASE_URL}/api/patients/${deleteTarget.patient_id}`);
             if (!res.data.success) throw new Error(res.data.message);
             setDeleteTarget(null);
-            onRefresh(); // ← triggers Dashboard re-fetch → StatCards + table both update
+            onRefresh();
         } catch (err) {
             alert('Delete failed: ' + err.message);
         } finally {
@@ -37,6 +43,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         }
     };
 
+    // CHECKBOX — toggle a single row
     const toggleOne = (id) =>
         setSelected((prev) => {
             const next = new Set(prev);
@@ -44,16 +51,17 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
             return next;
         });
 
+    // CHECKBOX — toggle all visible rows on the current page
     const toggleAll = (visibleIds) =>
         setSelected((prev) => {
             const allChecked = visibleIds.every((id) => prev.has(id));
             return allChecked ? new Set() : new Set([...prev, ...visibleIds]);
         });
 
-    // Search + filter + sort
+    // Filter by search + risk level, then sort highest risk score first
     const filtered = patients
         .filter((p) => {
-            if (searchId.trim() !== '') {
+            if (searchId.trim()) {
                 const rawSearch = searchId.trim().replace(/^p/i, '');
                 if (!String(p.patient_id).includes(rawSearch)) return false;
             }
@@ -62,13 +70,20 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         })
         .sort((a, b) => (b.risk_score ?? -Infinity) - (a.risk_score ?? -Infinity));
 
+    // Pagination calculations
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage   = Math.min(page, totalPages);
     const startIdx   = (safePage - 1) * pageSize;
     const pageRows   = filtered.slice(startIdx, startIdx + pageSize);
     const pageIds    = pageRows.map((p) => p.patient_id);
 
-    // Reset page if it exceeds total
+    // Page buttons — shows first 4 pages then "... lastPage"
+    const pageNumbers = [
+        ...Array.from({ length: Math.min(4, totalPages) }, (_, i) => i + 1),
+        ...(totalPages > 4 ? ['...', totalPages] : []),
+    ];
+
+    // Reset to last valid page if filters reduce the total
     useEffect(() => {
         if (page > totalPages) setPage(totalPages);
     }, [page, totalPages]);
@@ -77,26 +92,20 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
     useEffect(() => {
         if (!showSuccess) return;
         const timer = setTimeout(() => setShowSuccess(false), 3000);
-        return () => clearTimeout(timer); // cleanup if dismissed manually first
+        return () => clearTimeout(timer);
     }, [showSuccess]);
-
-    const pageNumbers = () => {
-        const pages = [];
-        for (let i = 1; i <= Math.min(4, totalPages); i++) pages.push(i);
-        if (totalPages > 4) { pages.push('...'); pages.push(totalPages); }
-        return pages;
-    };
-
-    const RiskBadge = ({ level = '' }) => (
-        <span className={`risk-badge ${level.toLowerCase()}`}>{level || '—'}</span>
-    );
 
     return (
         <>
             <AddPatientModal
                 isOpen={showAdd}
                 onClose={() => setShowAdd(false)}
-                onPatientAdded={() => { setShowAdd(false); onRefresh(); setShowSuccess(true); }}
+                onPatientAdded={(patientId) => {
+                    setShowAdd(false);
+                    onRefresh();
+                    setSavedId(patientId);
+                    setShowSuccess(true);
+                }}
             />
 
             <EditPatientModal
@@ -113,7 +122,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                     <div className="modal-panel-sm" style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
                         <h2 className="modal-title" style={{ justifyContent: 'center', marginBottom: 8 }}>
-                            Patient Saved Successfully
+                            <strong>p{savedId}</strong> Patient Saved Successfully
                         </h2>
                         <p style={{ fontSize: 14, color: 'var(--gray-500)', marginBottom: 24 }}>
                             The patient record has been saved and risk score updated.
@@ -122,19 +131,8 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             Done
                         </button>
                         {/* Progress bar indicating auto-dismiss */}
-                        <div style={{
-                            height: 3,
-                            background: 'var(--primary-blue-light)',
-                            borderRadius: 99,
-                            marginTop: 16,
-                            overflow: 'hidden',
-                        }}>
-                            <div style={{
-                                height: '100%',
-                                background: 'var(--primary-blue)',
-                                borderRadius: 99,
-                                animation: 'shrink 3s linear forwards',
-                            }} />
+                        <div style={{ height: 3, background: 'var(--primary-blue-light)', borderRadius: 99, marginTop: 16, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', background: 'var(--primary-blue)', borderRadius: 99, animation: 'shrink 3s linear forwards' }} />
                         </div>
                     </div>
                 </>
@@ -167,11 +165,9 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                 <div className="table-header">
                     <div className="table-header-top">
                         <h1 className="table-title">Priority Patients List</h1>
-                        <div className="table-header-actions">
-                            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-                                + Add Patient
-                            </button>
-                        </div>
+                        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+                            + Add Patient
+                        </button>
                     </div>
 
                     <div className="table-controls-row">
@@ -310,7 +306,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             <button className="page-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                                 Previous
                             </button>
-                            {pageNumbers().map((n, i) =>
+                            {pageNumbers.map((n, i) =>
                                 n === '...' ? (
                                     <span key={`e-${i}`} style={{ padding: '0 8px', color: 'var(--gray-500)' }}>...</span>
                                 ) : (
