@@ -116,7 +116,7 @@ const Analytics = () => {
 
   if (loading) return <div className="analytics-page"><Header /><p style={{ color: '#94a3b8', padding: '2rem' }}>Loading analytics…</p></div>;
   if (error)   return <div className="analytics-page"><Header /><p style={{ color: '#EF4444',  padding: '2rem' }}>Error: {error}</p></div>;
-
+  if (!data || !data.ageDistribution || !data.scoreDistribution) return <div className="analytics-page"><Header /></div>;
   const ageChartData   = buildAgeChartData(data.ageDistribution);
   const scoreChartData = buildScoreChartData(data.scoreDistribution);
 
