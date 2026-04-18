@@ -1,12 +1,10 @@
-// Handles what happens when PatientFormModal form is submitted (PUT)
-
 import React, { useState } from 'react';
 import axios from 'axios';
 import PatientFormModal from './PatientFormModal';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-// Convert a patient record from the DB into the form's shape.
+// Converts a DB patient record into the form's expected shape.
 // DB values can be numbers or null; the form expects strings or ''.
 const toFormValues = (patient) => ({
     age:           patient.age           ?? '',
@@ -24,38 +22,47 @@ const toFormValues = (patient) => ({
     rbs:           patient.rbs           ?? '',
 });
 
+// Handles the PUT request when an existing patient is updated via PatientFormModal.
+// Keeps API logic here so PatientFormModal stays a pure form component.
 const EditPatientModal = ({ isOpen, onClose, onPatientUpdated, patient }) => {
-    const [saving,   setSaving]   = useState(false);
-    const [apiError, setApiError] = useState(null);
+    const [saving,      setSaving]      = useState(false);
+    const [savingError, setSavingError] = useState(null);
 
     const handleClose = () => {
-        setApiError(null);
+        setSavingError(null);
         onClose();
     };
 
     const handleSave = async (payload) => {
         try {
             setSaving(true);
-            setApiError(null);
+            setSavingError(null);
 
             const res = await axios.put(`${BASE_URL}/api/patients/${patient.patient_id}`, payload);
 
             if (!res.data.success) {
-                setApiError(res.data.errors?.join(', ') ?? res.data.message ?? 'Failed to update patient.');
+                setSavingError(res.data.errors?.join(', ') ?? res.data.message ?? 'Failed to update patient.');
                 return;
             }
 
             onPatientUpdated();
             handleClose();
+
         } catch (err) {
             console.error(err);
-            setApiError(err.response?.data?.errors?.join(', ') ?? err.response?.data?.message ?? 'Could not connect to server.');
+            // Show the most specific error available, fall back to a generic message
+            setSavingError(
+                err.response?.data?.errors?.join(', ') ??
+                err.response?.data?.message ??
+                'Could not connect to server.'
+            );
         } finally {
             setSaving(false);
         }
     };
 
     return (
+        // Guard against rendering with no patient data
         <PatientFormModal
             isOpen={isOpen && !!patient}
             onClose={handleClose}
@@ -63,7 +70,7 @@ const EditPatientModal = ({ isOpen, onClose, onPatientUpdated, patient }) => {
             initialValues={patient ? toFormValues(patient) : null}
             onSave={handleSave}
             saving={saving}
-            apiError={apiError}
+            savingError={savingError}
         />
     );
 };
