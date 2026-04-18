@@ -1,35 +1,27 @@
-// backend/controllers/patientController.js
-const axios  = require('axios');
-const db     = require('../config/database');
-
-// Import Zod schemas from the shared schema file
-// (symlinked from shared/schema.js)
+const axios = require('axios');
+const db = require('../config/database');
 const { patientSchema, patientCreateSchema } = require('../utils/schema.js');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
 
-// Helper: format Zod errors into a readable array
-// Zod returns a nested error object — this flattens it into
-// ['age: Min 0', 'bp_systolic: Min 50', ...] for the API response
+// Flattens Zod errors into a readable array
+// e.g. ['age: Min 0', 'bp_systolic: Min 50']
 const formatZodErrors = (zodError) =>
     zodError.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
 
 // POST /api/patients
 const createPatient = async (req, res) => {
   try {
-    // safeParse returns { success, data } or { success: false, error }
-    // Unlike parse(), it never throws — safe to use in a try/catch free way
     const result = patientCreateSchema.safeParse(req.body);
 
     if (!result.success) {
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
-        errors:  formatZodErrors(result.error),
+        errors: formatZodErrors(result.error),
       });
     }
 
-    // result.data is fully validated and coerced (strings → numbers)
     const {
       clerk_id, age, sex, social_life,
       bp_systolic, bp_diastolic,
@@ -37,20 +29,20 @@ const createPatient = async (req, res) => {
       hba1c, bmi, rbs,
     } = result.data;
 
-    // Call ML service for risk scoring
+    // Get risk score from ML service
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
     });
     const { risk_score, risk_category } = mlResponse.data;
 
     const sql = `
-            INSERT INTO patients
-                (clerk_id, age, sex, social_life,
-                 cholesterol, triglycerides, hdl, ldl, vldl,
-                 bp_systolic, bp_diastolic, hba1c, bmi, rbs,
-                 risk_score, risk_category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO patients
+        (clerk_id, age, sex, social_life,
+         cholesterol, triglycerides, hdl, ldl, vldl,
+         bp_systolic, bp_diastolic, hba1c, bmi, rbs,
+         risk_score, risk_category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
     const values = [
       clerk_id, age, sex, social_life,
@@ -60,17 +52,16 @@ const createPatient = async (req, res) => {
     ];
 
     const dbResult = await db.execute(sql, values);
-    if (!dbResult.success) throw new Error(dbResult.error);
 
     res.status(201).json({
       success: true,
       message: 'Patient created successfully',
-      data: { patient_id: dbResult.data.insertId, risk_score, risk_category },
+      data: { patient_id: dbResult.insertId, risk_score, risk_category },
     });
 
   } catch (error) {
-    console.error('Error creating patient:', error);
-    res.status(500).json({ success: false, message: 'Failed to create patient', errors: [error.message] });
+    console.error('Error creating patient:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to create patient' });
   }
 };
 
@@ -93,41 +84,49 @@ const getAllPatients = async (req, res) => {
 
     sql += sortBy === 'risk' ? ' ORDER BY risk_score DESC' : ' ORDER BY patient_id DESC';
 
-    const result = await db.query(sql, values);
-    if (!result.success) throw new Error(result.error);
+    const patients = await db.query(sql, values);
 
-    res.status(200).json({ success: true, count: result.data.length, data: result.data });
+    res.status(200).json({ success: true, count: patients.length, data: patients });
 
   } catch (error) {
-    console.error('Error fetching patients:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch patients', errors: [error.message] });
+    console.error('Error fetching patients:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch patients' });
   }
 };
 
 // GET /api/patients/:id
 const getPatientById = async (req, res) => {
   try {
-    const result = await db.queryOne('SELECT * FROM patients WHERE patient_id = ?', [req.params.id]);
-    if (!result.success) throw new Error(result.error);
-    if (!result.data) return res.status(404).json({ success: false, message: 'Patient not found' });
+    const patient = await db.queryOne(
+        'SELECT * FROM patients WHERE patient_id = ?',
+        [req.params.id]
+    );
 
-    res.status(200).json({ success: true, data: result.data });
+    if (!patient) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    res.status(200).json({ success: true, data: patient });
 
   } catch (error) {
-    console.error('Error fetching patient:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch patient', errors: [error.message] });
+    console.error('Error fetching patient:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch patient' });
   }
 };
 
 // PUT /api/patients/:id
-// Uses patientSchema (not patientCreateSchema) — clerk_id not required on update
 const updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = await db.queryOne('SELECT * FROM patients WHERE patient_id = ?', [id]);
-    if (!existing.success) throw new Error(existing.error);
-    if (!existing.data) return res.status(404).json({ success: false, message: 'Patient not found' });
+    const existing = await db.queryOne(
+        'SELECT * FROM patients WHERE patient_id = ?',
+        [id]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
 
     const result = patientSchema.safeParse(req.body);
 
@@ -135,7 +134,7 @@ const updatePatient = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
-        errors:  formatZodErrors(result.error),
+        errors: formatZodErrors(result.error),
       });
     }
 
@@ -146,21 +145,21 @@ const updatePatient = async (req, res) => {
       hba1c, bmi, rbs,
     } = result.data;
 
-    // Re-score via ML service
+    // Re-score via ML service since health data changed
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
     });
     const { risk_score, risk_category } = mlResponse.data;
 
     const sql = `
-            UPDATE patients SET
-                age=?, sex=?, social_life=?,
-                cholesterol=?, triglycerides=?, hdl=?, ldl=?, vldl=?,
-                bp_systolic=?, bp_diastolic=?,
-                hba1c=?, bmi=?, rbs=?,
-                risk_score=?, risk_category=?
-            WHERE patient_id=?
-        `;
+      UPDATE patients SET
+        age=?, sex=?, social_life=?,
+        cholesterol=?, triglycerides=?, hdl=?, ldl=?, vldl=?,
+        bp_systolic=?, bp_diastolic=?,
+        hba1c=?, bmi=?, rbs=?,
+        risk_score=?, risk_category=?
+      WHERE patient_id=?
+    `;
 
     const values = [
       age, sex, social_life,
@@ -171,8 +170,7 @@ const updatePatient = async (req, res) => {
       id,
     ];
 
-    const dbResult = await db.execute(sql, values);
-    if (!dbResult.success) throw new Error(dbResult.error);
+    await db.execute(sql, values);
 
     res.status(200).json({
       success: true,
@@ -181,8 +179,8 @@ const updatePatient = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating patient:', error);
-    res.status(500).json({ success: false, message: 'Failed to update patient', errors: [error.message] });
+    console.error('Error updating patient:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update patient' });
   }
 };
 
@@ -191,18 +189,22 @@ const deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = await db.queryOne('SELECT * FROM patients WHERE patient_id = ?', [id]);
-    if (!existing.success) throw new Error(existing.error);
-    if (!existing.data) return res.status(404).json({ success: false, message: 'Patient not found' });
+    const existing = await db.queryOne(
+        'SELECT * FROM patients WHERE patient_id = ?',
+        [id]
+    );
 
-    const result = await db.execute('DELETE FROM patients WHERE patient_id = ?', [id]);
-    if (!result.success) throw new Error(result.error);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    await db.execute('DELETE FROM patients WHERE patient_id = ?', [id]);
 
     res.status(200).json({ success: true, message: 'Patient deleted successfully' });
 
   } catch (error) {
-    console.error('Error deleting patient:', error);
-    res.status(500).json({ success: false, message: 'Failed to delete patient', errors: [error.message] });
+    console.error('Error deleting patient:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to delete patient' });
   }
 };
 

@@ -9,11 +9,10 @@ const getAnalytics = async (req, res) => {
     }
 
     try {
-        // ── Query 1: Age Distribution ─────────────────────────────────────────
+        // Age Distribution
         // Groups each patient into an age band (20-29, 30-39, etc.)
         // then counts how many fall into each risk category within that band.
         // Result shape: [{ age_group: '50-59', risk_category: 'high', count: 1 }, ...]
-        // Used by the "Patient Demographics Analysis" bar chart on the Analytics page.
         const { data: ageDistribution } = await query(
             `SELECT
                 CASE
@@ -34,12 +33,11 @@ const getAnalytics = async (req, res) => {
             [clerk_id]
         );
 
-        // ── Query 2: Risk Category Distribution ───────────────────────────────
+        // Risk Category Distribution
         // Counts total patients in each risk category (low / medium / high).
         // FIELD() in ORDER BY forces a fixed order: low → medium → high
         // instead of alphabetical order.
         // Result shape: [{ risk_category: 'low', count: 4 }, ...]
-        // Used by the "Risk Category Distribution" bar chart on the Analytics page.
         const { data: scoreDistribution } = await query(
             `SELECT
                 risk_category,
