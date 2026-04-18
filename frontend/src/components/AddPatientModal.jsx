@@ -1,5 +1,3 @@
-// Handles what happens when PatientFormModal form is submitted (POST).
-
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useUser } from '@clerk/clerk-react';
@@ -7,49 +5,43 @@ import PatientFormModal, { EMPTY_FORM } from './PatientFormModal';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
+// Handles the POST request when a new patient is submitted.
+// Keeps API logic here so PatientFormModal stays a pure form component.
 const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
-    const { user } = useUser();           // Clerk user
-    const [saving,   setSaving]   = useState(false);
-    const [apiError, setApiError] = useState(null);
+    const { user } = useUser();
+
+    const [saving, setSaving] = useState(false);
+    const [savingError, setSavingError] = useState(null);
 
     const handleClose = () => {
-        setApiError(null);
+        setSavingError(null);
         onClose();
     };
 
     const handleSave = async (payload) => {
         try {
             setSaving(true);
-            setApiError(null);
+            setSavingError(null);
 
-            const parsed = {
+            // Zod already coerces strings to numbers, so only clerk_id needs adding
+            const res = await axios.post(`${BASE_URL}/api/patients`, {
                 ...payload,
-                clerk_id:      user.id,
-                age:           parseInt(payload.age, 10),
-                cholesterol:   parseFloat(payload.cholesterol),
-                triglycerides: parseFloat(payload.triglycerides),
-                hdl:           parseFloat(payload.hdl),
-                ldl:           parseFloat(payload.ldl),
-                vldl:          parseFloat(payload.vldl),
-                bp_systolic:   parseFloat(payload.bp_systolic),   // dataset format e.g. 12.0
-                bp_diastolic:  parseFloat(payload.bp_diastolic),  // dataset format e.g. 8.0
-                hba1c:         parseFloat(payload.hba1c),
-                bmi:           parseFloat(payload.bmi),
-                rbs:           parseFloat(payload.rbs),
-            };
-
-            const res = await axios.post(`${BASE_URL}/api/patients`, parsed);
+                clerk_id: user.id,
+            });
 
             if (!res.data.success) {
-                setApiError(res.data.errors?.join(', ') ?? res.data.message ?? 'Failed to add patient.');
+                setSavingError(res.data.errors?.join(', ') ?? res.data.message ?? 'Failed to add patient.');
                 return;
             }
 
-            onPatientAdded();
+            // Pass the new patient ID up so the success popup can display it
+            onPatientAdded(res.data.data.patient_id);
             handleClose();
+
         } catch (err) {
             console.error(err);
-            setApiError(
+            // Show the most specific error available, fall back to a generic message
+            setSavingError(
                 err.response?.data?.errors?.join(', ') ??
                 err.response?.data?.message ??
                 'Could not connect to server.'
@@ -67,7 +59,7 @@ const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
             initialValues={EMPTY_FORM}
             onSave={handleSave}
             saving={saving}
-            apiError={apiError}
+            savingError={savingError}
         />
     );
 };
