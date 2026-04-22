@@ -946,3 +946,262 @@ input[type="checkbox"] {
   from { width: 100%; }
   to   { width: 0%; }
 }
+/*Landing Page*/
+
+@keyframes lpFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lpBadgePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ── Root — exactly 100vh, flex column, no overflow ─────────────────────── */
+.lp-root {
+  height: 100vh;                    /* fills viewport exactly */
+  display: flex;
+  flex-direction: column;
+  background: #f7fafd;
+  font-family: 'DM Sans', sans-serif;
+  color: #0f2744;
+  overflow: hidden;                 /* prevents any scroll */
+  position: relative;
+}
+
+/* ── Background layers ──────────────────────────────────────────────────── */
+.lp-bg {
+  position: absolute;
+  inset: 0;
+  background:
+          radial-gradient(ellipse 80% 60% at 70% -10%, rgba(37,99,235,0.07) 0%, transparent 70%),
+          radial-gradient(ellipse 60% 40% at -10% 80%, rgba(37,99,235,0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.lp-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+          linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* ── Decorative SVGs ────────────────────────────────────────────────────── */
+.lp-deco-right {
+  position: absolute;
+  right: 6%;
+  top: 50%;
+  transform: translateY(-40%);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lp-deco-left {
+  position: absolute;
+  left: 5%;
+  bottom: 12%;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Navbar — compact, no background, fixed height ──────────────────────── */
+.lp-nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 2.5rem;
+  border-bottom: 1px solid rgba(37,99,235,0.08);
+  flex-shrink: 0;                   /* never shrinks */
+}
+
+.lp-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lp-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: #2563eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lp-logo-wordmark {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e3a5f;
+  letter-spacing: 0.06em;
+}
+
+/* ── Hero — takes all space between nav and footer ───────────────────────── */
+.lp-hero {
+  flex: 1;                          /* fills remaining height */
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2rem;
+  text-align: center;
+  animation: lpFadeUp 0.7s ease both;
+  overflow: hidden;
+}
+
+/* ── Badge ──────────────────────────────────────────────────────────────── */
+.lp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 13px;
+  background: rgba(37,99,235,0.08);
+  border: 1px solid rgba(37,99,235,0.2);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1d4ed8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+}
+
+.lp-badge-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: lpBadgePulse 2s infinite;
+  flex-shrink: 0;
+}
+
+/* ── Headline ───────────────────────────────────────────────────────────── */
+.lp-headline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.4rem, 4.5vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #0f2744;
+  max-width: 640px;
+  margin: 0 0 1rem;
+  letter-spacing: -0.02em;
+}
+
+.lp-headline em {
+  font-style: italic;
+  color: #2563eb;
+}
+
+/* ── Subheading ─────────────────────────────────────────────────────────── */
+.lp-sub {
+  font-size: 15px;
+  font-weight: 300;
+  color: #4a6480;
+  max-width: 480px;
+  line-height: 1.65;
+  margin: 0 0 2rem;
+}
+
+/* ── CTA buttons ────────────────────────────────────────────────────────── */
+.lp-ctas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.lp-btn-primary {
+  padding: 11px 28px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: #2563eb;
+  border: 2px solid #2563eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.lp-btn-primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.lp-btn-secondary {
+  padding: 11px 28px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #2563eb;
+  background: transparent;
+  border: 2px solid rgba(37,99,235,0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+
+.lp-btn-secondary:hover {
+  border-color: #2563eb;
+  background: rgba(37,99,235,0.04);
+  transform: translateY(-1px);
+}
+
+/* ── Stats row ──────────────────────────────────────────────────────────── */
+.lp-stats {
+  display: flex;
+  gap: 2.5rem;
+  margin-top: 2.2rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid rgba(37,99,235,0.1);
+}
+
+.lp-stat {
+  text-align: center;
+}
+
+.lp-stat-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #1e3a5f;
+  line-height: 1;
+}
+
+.lp-stat-num span {
+  color: #2563eb;
+}
+
+.lp-stat-label {
+  font-size: 11px;
+  color: #7a94ab;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Footer — compact, fixed height, never grows ────────────────────────── */
+.lp-footer {
+  position: relative;
+  z-index: 5;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 11px;
+  color: #9ab0c3;
+  border-top: 1px solid rgba(37,99,235,0.06);
+  flex-shrink: 0;                   /* never shrinks */
+}

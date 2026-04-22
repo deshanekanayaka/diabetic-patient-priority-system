@@ -20,21 +20,27 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
     const [page,         setPage]         = useState(1);
     const [pageSize,     setPageSize]     = useState(10);
     const [showAdd,      setShowAdd]      = useState(false);
+    // Holds the patient object to be edited, or null when no edit is in progress
     const [editPatient,  setEditPatient]  = useState(null);
+    // Holds the patient object pending deletion, or null when no delete is in progress
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting,     setDeleting]     = useState(false);
-    const [selected,     setSelected]     = useState(new Set()); // reserved for future bulk actions
+    // Reserved for future bulk-action feature
+    const [selected,     setSelected]     = useState(new Set());
     const [showSuccess,  setShowSuccess]  = useState(false);
+    // Stores the ID of the most recently saved patient to display in the success modal
     const [savedId,      setSavedId]      = useState(null);
 
-    // DELETE
     const confirmDelete = async () => {
+        // Exits early if somehow called without a target
         if (!deleteTarget) return;
         try {
             setDeleting(true);
             const res = await axios.delete(`${BASE_URL}/api/patients/${deleteTarget.patient_id}`);
+            // Treats an unsuccessful response body as an error even if HTTP status was 200
             if (!res.data.success) throw new Error(res.data.message);
             setDeleteTarget(null);
+            // Refreshes the patient list in the parent after a successful delete
             onRefresh();
         } catch (err) {
             alert('Delete failed: ' + err.message);
@@ -43,7 +49,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         }
     };
 
-    // CHECKBOX — toggle a single row
+    // Toggles a single row's selected state without mutating the previous Set
     const toggleOne = (id) =>
         setSelected((prev) => {
             const next = new Set(prev);
@@ -51,44 +57,47 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
             return next;
         });
 
-    // CHECKBOX — toggle all visible rows on the current page
+    // Selects all visible rows if any are unchecked, otherwise clears all selections
     const toggleAll = (visibleIds) =>
         setSelected((prev) => {
             const allChecked = visibleIds.every((id) => prev.has(id));
             return allChecked ? new Set() : new Set([...prev, ...visibleIds]);
         });
 
-    // Filter by search + risk level, then sort highest risk score first
+    // Strips a leading "p" from the search input so "p8" and "8" both match patient ID 8
     const filtered = patients
         .filter((p) => {
             if (searchId.trim()) {
                 const rawSearch = searchId.trim().replace(/^p/i, '');
                 if (!String(p.patient_id).includes(rawSearch)) return false;
             }
+            // Skips risk filter when set to "all"
             if (riskFilter !== 'all' && (p.risk_category || '').toLowerCase() !== riskFilter) return false;
             return true;
         })
+        // Sorts highest risk score to the top; unscored patients fall to the bottom
         .sort((a, b) => (b.risk_score ?? -Infinity) - (a.risk_score ?? -Infinity));
 
-    // Pagination calculations
+    // Ensures totalPages is never 0 to avoid dividing by zero in slice calculations
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    // Clamps the current page within valid bounds if filters shrink the result set
     const safePage   = Math.min(page, totalPages);
     const startIdx   = (safePage - 1) * pageSize;
     const pageRows   = filtered.slice(startIdx, startIdx + pageSize);
     const pageIds    = pageRows.map((p) => p.patient_id);
 
-    // Page buttons — shows first 4 pages then "... lastPage"
+    // Always shows pages 1–4, then appends "..." and the last page if there are more
     const pageNumbers = [
         ...Array.from({ length: Math.min(4, totalPages) }, (_, i) => i + 1),
         ...(totalPages > 4 ? ['...', totalPages] : []),
     ];
 
-    // Reset to last valid page if filters reduce the total
+    // Snaps the page back to the last valid page when filters reduce the total count
     useEffect(() => {
         if (page > totalPages) setPage(totalPages);
     }, [page, totalPages]);
 
-    // Auto-dismiss success modal after 3 seconds
+    // Automatically hides the success modal after 3 seconds; cleans up the timer on unmount
     useEffect(() => {
         if (!showSuccess) return;
         const timer = setTimeout(() => setShowSuccess(false), 3000);
@@ -103,6 +112,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                 onPatientAdded={(patientId) => {
                     setShowAdd(false);
                     onRefresh();
+                    // Stores the new patient's ID so the success modal can display it
                     setSavedId(patientId);
                     setShowSuccess(true);
                 }}
@@ -115,7 +125,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                 patient={editPatient}
             />
 
-            {/* Success Modal */}
+            {/* Success modal — auto-dismisses after 3 s or on button click */}
             {showSuccess && (
                 <>
                     <div className="modal-overlay" onClick={() => setShowSuccess(false)} />
@@ -130,7 +140,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                         <button className="btn-modal-save" onClick={() => setShowSuccess(false)}>
                             Done
                         </button>
-                        {/* Progress bar indicating auto-dismiss */}
+                        {/* Animated bar that visually represents the 3 s auto-dismiss countdown */}
                         <div style={{ height: 3, background: 'var(--primary-blue-light)', borderRadius: 99, marginTop: 16, overflow: 'hidden' }}>
                             <div style={{ height: '100%', background: 'var(--primary-blue)', borderRadius: 99, animation: 'shrink 3s linear forwards' }} />
                         </div>
@@ -138,7 +148,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                 </>
             )}
 
-            {/* Delete Confirm Modal */}
+            {/* Delete confirmation modal — clicking the overlay cancels the delete */}
             {deleteTarget && (
                 <>
                     <div className="modal-overlay" onClick={() => setDeleteTarget(null)} />
@@ -153,6 +163,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                         <p className="delete-confirm-sub">This action cannot be undone.</p>
                         <div className="modal-footer">
                             <button className="btn-modal-cancel" onClick={() => setDeleteTarget(null)}>Cancel</button>
+                            {/* Disables the button while the delete request is in flight */}
                             <button className="btn-modal-delete" onClick={confirmDelete} disabled={deleting}>
                                 {deleting ? 'Deleting…' : 'Yes, Delete'}
                             </button>
@@ -172,6 +183,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
 
                     <div className="table-controls-row">
                         <div className="search-box">
+                            {/* Resets to page 1 whenever the search term changes */}
                             <input
                                 type="text"
                                 placeholder="Search by Patient ID (e.g. p8 or 8)"
@@ -180,6 +192,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             />
                         </div>
                         <div className="filter-controls">
+                            {/* Resets to page 1 when the risk filter changes to avoid empty pages */}
                             <select
                                 className="filter-select"
                                 value={riskFilter}
@@ -196,6 +209,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
 
                 {loading && <p style={{ padding: '1.5rem', color: '#555' }}>Loading patients…</p>}
 
+                {/* Shows the error alongside a retry button so the clinician can recover */}
                 {error && (
                     <div className="modal-error-banner" style={{ margin: '1rem' }}>
                         {error}{' '}
@@ -211,6 +225,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             <thead>
                             <tr className="column-headers">
                                 <th className="col-batch-checkbox">
+                                    {/* Header checkbox checks/unchecks all rows on the current page */}
                                     <input
                                         type="checkbox"
                                         checked={pageIds.length > 0 && pageIds.every((id) => selected.has(id))}
@@ -238,6 +253,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             </thead>
                             <tbody>
                             {pageRows.length === 0 ? (
+                                // Spans all 18 columns so the empty message fills the full table width
                                 <tr>
                                     <td colSpan={18} style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
                                         No patients found.
@@ -252,8 +268,10 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                                             onChange={() => toggleOne(p.patient_id)}
                                         />
                                     </td>
+                                    {/* Prefixes the ID with "p" to match the project's patient ID format */}
                                     <td className="patient-id">p{p.patient_id}</td>
                                     <td className="text-center">{p.age}</td>
+                                    {/* Shows one decimal place for the score, or a dash if not yet scored */}
                                     <td className="text-center risk-score">
                                         {p.risk_score != null ? Number(p.risk_score).toFixed(1) : '—'}
                                     </td>
@@ -271,7 +289,9 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                                     <td className="text-center">{p.bmi}</td>
                                     <td className="text-center">{p.rbs}</td>
                                     <td className="actions-cell">
+                                        {/* Opens the edit modal pre-populated with this patient's data */}
                                         <button className="action-btn edit" onClick={() => setEditPatient(p)}>Edit</button>
+                                        {/* Stages the patient for deletion — a confirm modal appears before anything is deleted */}
                                         <button className="action-btn delete" onClick={() => setDeleteTarget(p)}>Delete</button>
                                     </td>
                                 </tr>
@@ -283,6 +303,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
 
                 {!loading && !error && (
                     <div className="pagination">
+                        {/* Shows the current range, e.g. "Showing 1–10 of 43 patients" */}
                         <div className="pagination-info">
                             Showing{' '}
                             <strong>
@@ -293,6 +314,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                         <div className="pagination-controls">
                             <div className="rows-per-page">
                                 Show
+                                {/* Resets to page 1 when the page size changes to avoid empty pages */}
                                 <select
                                     className="filter-select"
                                     style={{ padding: '4px 24px 4px 8px' }}
@@ -306,10 +328,12 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             <button className="page-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                                 Previous
                             </button>
+                            {/* Renders numbered page buttons; "..." is a non-clickable separator */}
                             {pageNumbers.map((n, i) =>
                                 n === '...' ? (
                                     <span key={`e-${i}`} style={{ padding: '0 8px', color: 'var(--gray-500)' }}>...</span>
                                 ) : (
+                                    // Highlights the button for the currently active page
                                     <button key={n} className={`page-btn${safePage === n ? ' active' : ''}`} onClick={() => setPage(n)}>
                                         {n}
                                     </button>

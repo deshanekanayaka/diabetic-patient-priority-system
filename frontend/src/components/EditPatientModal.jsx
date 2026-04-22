@@ -4,8 +4,8 @@ import PatientFormModal from './PatientFormModal';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-// Converts a DB patient record into the form's expected shape.
-// DB values can be numbers or null; the form expects strings or ''.
+// Converts a DB patient record into the shape the form fields expect
+// DB values can be numbers or null; the form expects strings or ''
 const toFormValues = (patient) => ({
     age:           patient.age           ?? '',
     sex:           patient.sex           ?? 'male',
@@ -22,12 +22,15 @@ const toFormValues = (patient) => ({
     rbs:           patient.rbs           ?? '',
 });
 
-// Handles the PUT request when an existing patient is updated via PatientFormModal.
-// Keeps API logic here so PatientFormModal stays a pure form component.
+// Handles the PUT request when an existing patient is updated via PatientFormModal
+// API logic lives here so PatientFormModal stays a pure form component
 const EditPatientModal = ({ isOpen, onClose, onPatientUpdated, patient }) => {
+    // Tracks whether the save request is in progress to disable the submit button
     const [saving,      setSaving]      = useState(false);
+    // Holds any error message returned by the server to display in the form
     const [savingError, setSavingError] = useState(null);
 
+    // Clears any previous error before closing the modal
     const handleClose = () => {
         setSavingError(null);
         onClose();
@@ -38,35 +41,40 @@ const EditPatientModal = ({ isOpen, onClose, onPatientUpdated, patient }) => {
             setSaving(true);
             setSavingError(null);
 
+            // Sends the updated patient data to the backend
             const res = await axios.put(`${BASE_URL}/api/patients/${patient.patient_id}`, payload);
 
+            // Checks for application-level errors returned inside a 200 response
             if (!res.data.success) {
                 setSavingError(res.data.errors?.join(', ') ?? res.data.message ?? 'Failed to update patient.');
                 return;
             }
 
+            // Notifies the parent to refresh the patient list, then closes the modal
             onPatientUpdated();
             handleClose();
 
         } catch (err) {
             console.error(err);
-            // Show the most specific error available, fall back to a generic message
+            // Uses the most specific error available, falling back to a generic message
             setSavingError(
                 err.response?.data?.errors?.join(', ') ??
                 err.response?.data?.message ??
                 'Could not connect to server.'
             );
         } finally {
+            // Always re-enables the save button regardless of outcome
             setSaving(false);
         }
     };
 
     return (
-        // Guard against rendering with no patient data
+        // Prevents rendering if patient data hasn't loaded yet
         <PatientFormModal
             isOpen={isOpen && !!patient}
             onClose={handleClose}
             title={`Edit Patient — p${patient?.patient_id}`}
+            // Converts the raw DB record to form-friendly values, or passes null if no patient
             initialValues={patient ? toFormValues(patient) : null}
             onSave={handleSave}
             saving={saving}

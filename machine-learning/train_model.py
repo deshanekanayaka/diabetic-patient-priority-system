@@ -7,7 +7,6 @@ from sklearn.model_selection import GridSearchCV
 import pickle
 import os
 
-
 def load_and_preprocess_data(csv_path):
     """
     Loads and prepares the diabetes dataset.
