@@ -1,50 +1,55 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 
-const API_BASE = 'http://localhost:3300';
+const API_BASE = import.meta.env.VITE_API_URL;
 
-// Custom hook that fetches analytics data for the current clinician.
-// Returns data, loading, and error so Analytics.jsx can handle each state.
-// data shape: { ageDistribution: [...], scoreDistribution: [...] }
+// Custom hook that fetches aggregated analytics data for the signed-in clinician
 const useAnalytics = () => {
     const { user } = useUser();
 
-    // Initialised with empty arrays so the chart builders never receive undefined
-    // while waiting for the API response
-    const [data,    setData]    = useState({
+    // Initialised with empty arrays so charts render without crashing before data arrives
+    const [data, setData] = useState({
         ageDistribution: [],
-        scoreDistribution: []
+        avgScoreByAge: [],
     });
+    // Starts as true so the loading state is correct before the first effect runs
     const [loading, setLoading] = useState(true);
-    const [error,   setError]   = useState(null);
+    const [error, setError] = useState(null);
 
+    // Re-runs whenever the user object changes, e.g. after sign-in completes
     useEffect(() => {
-        // Wait until Clerk has resolved the user before fetching
+        // Skips the fetch if Clerk hasn't resolved the user yet
         if (!user) return;
 
-        setLoading(true);
+        // Allows the in-flight request to be cancelled if the component unmounts
+        const controller = new AbortController();
 
-        fetch(`${API_BASE}/api/analytics?clerk_id=${user.id}`)
-            .then(res => {
-                // Throw so the catch block handles non-2xx responses
+        const fetchAnalytics = async () => {
+            try {
+                const res = await fetch(
+                    `${API_BASE}/api/analytics?clerk_id=${user.id}`,
+                    { signal: controller.signal }
+                );
+                // Treats non-2xx HTTP responses as errors since fetch doesn't throw on them
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                // data shape from backend:
-                // {
-                //   ageDistribution:   [{ age_group, risk_category, count }, ...],
-                //   scoreDistribution: [{ risk_category, count }, ...]
-                // }
-                setData(data);
+                const json = await res.json();
+                setData(json);
+            } catch (err) {
+                // Ignores cancellation errors triggered by the cleanup function
+                if (err.name !== 'AbortError') {
+                    setError(err.message);
+                }
+            } finally {
                 setLoading(false);
-            })
-            .catch(err => {
-                setError(err.message);
-                setLoading(false);
-            });
+            }
+        };
 
-    }, [user]); // re-fetch if the logged-in user changes
+        fetchAnalytics();
+
+        // Cancels the fetch if the component unmounts before the response arrives
+        return () => controller.abort();
+
+    }, [user]);
 
     return { data, loading, error };
 };

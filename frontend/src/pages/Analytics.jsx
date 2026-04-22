@@ -13,8 +13,11 @@ import useAnalytics from '../utils/useAnalytics.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-//Chart options
+// Bucket labels for age groups and risk score bands
+const AGE_LABELS = ['20-29', '30-39', '40-49', '50-59', '60-69', '70+'];
+const SCORE_BANDS = ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'];
 
+// Shared chart options for the age distribution bar chart
 const ageOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -26,26 +29,29 @@ const ageOptions = {
       bodyColor: '#94a3b8',
       padding: 10,
       callbacks: {
-        label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} patient${ctx.parsed.y !== 1 ? 's' : ''}`,
+        // Appends patient count with correct pluralisation
+        label: (ctx) =>
+            ` ${ctx.dataset.label}: ${ctx.parsed.y} patient${ctx.parsed.y !== 1 ? 's' : ''}`,
       },
     },
   },
   scales: {
     x: {
       ticks: { color: '#1e293b' },
-      grid:  { color: 'rgba(148,163,184,0.1)' },
+      grid: { color: 'rgba(148,163,184,0.1)' },
       title: { display: true, text: 'Age Group', color: '#1e293b', font: { size: 12 } },
     },
     y: {
       beginAtZero: true,
       ticks: { color: '#1e293b', precision: 0 },
-      grid:  { color: 'rgba(148,163,184,0.1)' },
+      grid: { color: 'rgba(148,163,184,0.1)' },
       title: { display: true, text: 'Number of Patients', color: '#1e293b', font: { size: 12 } },
     },
   },
 };
 
-const scoreOptions = {
+// Shared chart options for the risk score histogram
+const histogramOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -56,69 +62,124 @@ const scoreOptions = {
       bodyColor: '#94a3b8',
       padding: 10,
       callbacks: {
-        label: (ctx) => ` ${ctx.parsed.y} patient${ctx.parsed.y !== 1 ? 's' : ''}`,
+        // Shows patient count per score band on hover
+        label: (ctx) =>
+            ` ${ctx.parsed.y} patient${ctx.parsed.y !== 1 ? 's' : ''}`,
       },
     },
   },
   scales: {
     x: {
       ticks: { color: '#1e293b' },
-      grid:  { color: 'rgba(148,163,184,0.1)' },
-      title: { display: true, text: 'Risk Category', color: '#1e293b', font: { size: 12 } },
+      grid: { color: 'rgba(148,163,184,0.1)' },
+      title: { display: true, text: 'Risk Score Band', color: '#1e293b', font: { size: 12 } },
     },
     y: {
       beginAtZero: true,
       ticks: { color: '#1e293b', precision: 0 },
-      grid:  { color: 'rgba(148,163,184,0.1)' },
+      grid: { color: 'rgba(148,163,184,0.1)' },
       title: { display: true, text: 'Number of Patients', color: '#1e293b', font: { size: 12 } },
     },
   },
 };
 
-// Data Builders
-
+// Builds grouped bar chart data split by high/medium/low risk per age group
 const buildAgeChartData = (rows) => {
-  const AGE_LABELS = ['20-29', '30-39', '40-49', '50-59', '60-69', '70+'];
-
+  // Looks up count for a given risk level and age group from the flat rows array
   const countFor = (riskLevel, ageGroup) => {
-    const row = rows.find(r => r.age_group === ageGroup && r.risk_category === riskLevel);
+    const row = rows.find(
+        (r) => r.age_group === ageGroup && r.risk_category === riskLevel
+    );
     return row ? row.count : 0;
   };
 
   return {
     labels: AGE_LABELS,
     datasets: [
-      { label: 'High Risk',   data: AGE_LABELS.map(g => countFor('high',   g)), backgroundColor: '#EF4444', borderRadius: 4 },
-      { label: 'Medium Risk', data: AGE_LABELS.map(g => countFor('medium', g)), backgroundColor: '#F59E0B', borderRadius: 4 },
-      { label: 'Low Risk',    data: AGE_LABELS.map(g => countFor('low',    g)), backgroundColor: '#10B981', borderRadius: 4 },
+      {
+        label: 'High Risk',
+        data: AGE_LABELS.map((g) => countFor('high', g)),
+        backgroundColor: '#EF4444',
+        borderRadius: 4,
+      },
+      {
+        label: 'Medium Risk',
+        data: AGE_LABELS.map((g) => countFor('medium', g)),
+        backgroundColor: '#F59E0B',
+        borderRadius: 4,
+      },
+      {
+        label: 'Low Risk',
+        data: AGE_LABELS.map((g) => countFor('low', g)),
+        backgroundColor: '#10B981',
+        borderRadius: 4,
+      },
     ],
   };
 };
 
-const buildScoreChartData = (rows) => ({
-  labels: ['Low Risk', 'Medium Risk', 'High Risk'],
-  datasets: [{
-    label: 'Patients',
-    data: [
-      rows.find(r => r.risk_category === 'low')?.count    || 0,
-      rows.find(r => r.risk_category === 'medium')?.count || 0,
-      rows.find(r => r.risk_category === 'high')?.count   || 0,
+// Builds histogram data with colour-coded bars based on score severity
+const buildHistogramData = (rows) => {
+  // Colours bars red (≥70), amber (≥40), or green (below 40)
+  const barColor = (band) => {
+    const lower = parseInt(band.split('-')[0], 10);
+    if (lower >= 70) return '#EF4444';
+    if (lower >= 40) return '#F59E0B';
+    return '#10B981';
+  };
+
+  const counts = SCORE_BANDS.map((band) => {
+    const row = rows.find((r) => r.score_band === band);
+    return row ? row.count : 0;
+  });
+
+  return {
+    labels: SCORE_BANDS,
+    datasets: [
+      {
+        label: 'Number of Patients',
+        data: counts,
+        backgroundColor: SCORE_BANDS.map(barColor),
+        borderRadius: 4,
+        // Full-width bars so they touch, giving a true histogram appearance
+        categoryPercentage: 1.0,
+        barPercentage: 1.0,
+      },
     ],
-    backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-    borderRadius: 4,
-  }],
-});
+  };
+};
 
-//Component
-
+// Renders the Analytics page with two charts: age distribution and risk score histogram
 const Analytics = () => {
   const { data, loading, error } = useAnalytics();
 
-  if (loading) return <div className="analytics-page"><Header /><p style={{ color: '#94a3b8', padding: '2rem' }}>Loading analytics…</p></div>;
-  if (error)   return <div className="analytics-page"><Header /><p style={{ color: '#EF4444',  padding: '2rem' }}>Error: {error}</p></div>;
-  if (!data || !data.ageDistribution || !data.scoreDistribution) return <div className="analytics-page"><Header /></div>;
-  const ageChartData   = buildAgeChartData(data.ageDistribution);
-  const scoreChartData = buildScoreChartData(data.scoreDistribution);
+  // Loading and error guards before rendering charts
+  if (loading)
+    return (
+        <div className="analytics-page">
+          <Header />
+          <p style={{ color: '#94a3b8', padding: '2rem' }}>Loading analytics…</p>
+        </div>
+    );
+
+  if (error)
+    return (
+        <div className="analytics-page">
+          <Header />
+          <p style={{ color: '#EF4444', padding: '2rem' }}>Error: {error}</p>
+        </div>
+    );
+
+  // Renders empty page shell if data is missing or incomplete
+  if (!data || !data.ageDistribution || !data.riskScoreDistribution)
+    return (
+        <div className="analytics-page">
+          <Header />
+        </div>
+    );
+
+  const ageChartData       = buildAgeChartData(data.ageDistribution);
+  const histogramChartData = buildHistogramData(data.riskScoreDistribution);
 
   return (
       <div className="analytics-page">
@@ -138,11 +199,11 @@ const Analytics = () => {
 
             <div className="chart-card">
               <div className="chart-card-header">
-                <h2 className="chart-title">Risk Category Distribution</h2>
-                <p className="chart-subtitle">Patient count by risk category</p>
+                <h2 className="chart-title">Risk Score Distribution</h2>
+                <p className="chart-subtitle">Number of patients per 10-point risk score band</p>
               </div>
               <div className="chart-content" style={{ height: '300px' }}>
-                <Bar data={scoreChartData} options={scoreOptions} />
+                <Bar data={histogramChartData} options={histogramOptions} />
               </div>
             </div>
 
