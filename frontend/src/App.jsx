@@ -1,39 +1,100 @@
-// frontend/src/App.jsx
-import { SignIn, useUser } from '@clerk/clerk-react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Analytics from './pages/Analytics';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import {
+    SignIn,
+    SignUp,
+    SignedIn,
+    SignedOut,
+    RedirectToSignIn,
+    useUser,
+} from '@clerk/clerk-react';
+import LandingPage from './pages/LandingPage';
+import Dashboard   from './pages/Dashboard';
+import Analytics   from './pages/Analytics';
 
-const App = () => {
-    const { isLoaded, isSignedIn, user } = useUser();
+// Shown while Clerk is still resolving the user's auth state
+const LoadingScreen = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading…</p>
+    </div>
+);
 
-    // Wait for Clerk to finish loading — prevents "Cannot read properties of
-    // undefined (reading 'id')" crash on page refresh
-    if (!isLoaded) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-                <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading…</p>
-            </div>
-        );
-    }
-
-    if (!isSignedIn) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-                <SignIn />
-            </div>
-        );
-    }
-
-    // user.id is safe to access here — Clerk is loaded and user is signed in
-    return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/"          element={<Dashboard clerkId={user.id} />} />
-                <Route path="/analytics" element={<Analytics clerkId={user.id} />} />
-            </Routes>
-        </BrowserRouter>
-    );
+// Reusable style object that centres Clerk's sign-in and sign-up cards on the page
+const centredPage = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: '#f9fafb',
 };
 
-export default App;
+// Wraps any route that requires the user to be signed in
+function ProtectedRoute({ children }) {
+    // isLoaded becomes true once Clerk has finished checking the session
+    const { isLoaded, isSignedIn, user } = useUser();
+
+    // Holds rendering until Clerk has resolved the auth state
+    if (!isLoaded) return <LoadingScreen />;
+
+    return (
+        <>
+            {/* Renders the page and passes the user object down to the child */}
+            <SignedIn>{children(user)}</SignedIn>
+            {/* Redirects unauthenticated visitors to the sign-in page */}
+            <SignedOut><RedirectToSignIn /></SignedOut>
+        </>
+    );
+}
+
+// Defines all client-side routes and their auth requirements
+export default function App() {
+    return (
+        <Routes>
+
+            {/* Landing page — accessible without authentication */}
+            <Route path="/" element={<LandingPage />} />
+
+            {/* routing="path" is required so Clerk can manage its own internal sub-routes */}
+            <Route
+                path="/sign-in/*"
+                element={
+                    <div style={centredPage}>
+                        <SignIn routing="path" path="/sign-in" />
+                    </div>
+                }
+            />
+
+            <Route
+                path="/sign-up/*"
+                element={
+                    <div style={centredPage}>
+                        <SignUp routing="path" path="/sign-up" />
+                    </div>
+                }
+            />
+
+            {/* Passes the Clerk user ID to Dashboard so it can scope API requests */}
+            <Route
+                path="/dashboard"
+                element={
+                    <ProtectedRoute>
+                        {(user) => <Dashboard clerkId={user.id} />}
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Passes the Clerk user ID to Analytics so it can scope API requests */}
+            <Route
+                path="/analytics"
+                element={
+                    <ProtectedRoute>
+                        {(user) => <Analytics clerkId={user.id} />}
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Redirects any unrecognised path back to the landing page */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+
+        </Routes>
+    );
+}
