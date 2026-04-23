@@ -1,19 +1,17 @@
 /*
+ * controllers/authController.js
+ * Handles login and signup logic for clinicians
+ */
 
-controllers/authController.js
-Handle login and signup logic for clinicians
-
-*/
 const bcrypt = require('bcrypt');
 const db = require('../config/database');
 
-// SignUp
+// POST /api/auth/signup
 async function signup(req, res) {
-    console.log('Signup Function')
   try {
     const { name, email, password } = req.body;
 
-    // Check if all required fields are present
+    // Checks all required fields are present before any DB calls
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -22,7 +20,7 @@ async function signup(req, res) {
       });
     }
 
-    // Validate email format 
+    // Validates email follows standard format (e.g. user@domain.com)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
@@ -32,7 +30,7 @@ async function signup(req, res) {
       });
     }
 
-    // Validate password strength
+    // Enforces minimum password length before hashing
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -41,17 +39,13 @@ async function signup(req, res) {
       });
     }
 
-    // Check if email already exists
+    // queryOne returns the row directly or null — checks if email is already registered
     const existingUser = await db.queryOne(
-      'SELECT email FROM clinicians WHERE email = ?',
-      [email]
+        'SELECT email FROM clinicians WHERE email = ?',
+        [email]
     );
 
-    console.log('Checking for existing email:', email);
-    console.log('Query result:', existingUser);
-
-    if (existingUser.success && existingUser.data) {
-      console.log('Email already exists! Rejecting signup.');
+    if (existingUser) {
       return res.status(400).json({
         success: false,
         message: 'Email already registered',
@@ -59,30 +53,20 @@ async function signup(req, res) {
       });
     }
 
-    console.log('Email is available. Proceeding with signup.');
-
-    // Hash the password (bcrypt automatically adds salt)
-    // Salt rounds = 10 (good balance between security and speed)
+    // Hashes password before storing — bcrypt automatically generates and applies a salt
+    // 10 salt rounds is the standard balance between security and performance
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert new clinician into database
+    // Inserts new clinician — stores hashed password, never plaintext
     const result = await db.execute(
-      'INSERT INTO clinicians (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
+        'INSERT INTO clinicians (name, email, password) VALUES (?, ?, ?)',
+        [name, email, hashedPassword]
     );
 
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to create account',
-        errors: ['Database error. Please try again.']
-      });
-    }
+    // insertId is the auto-incremented ID assigned to the new row
+    const newClinicianId = result.insertId;
 
-    // Newly created clinician's ID
-    const newClinicianId = result.data.insertId;
-
-    // Return success with clinician info
+    // Returns the new clinician's info — password excluded from response
     res.status(201).json({
       success: true,
       message: 'Account created successfully!',
@@ -103,13 +87,12 @@ async function signup(req, res) {
   }
 }
 
+// POST /api/auth/login
 async function login(req, res) {
-      console.log('Login function'); 
-
   try {
     const { email, password } = req.body;
 
-    // Validate input
+    // Checks both fields are present before any DB calls
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -118,14 +101,14 @@ async function login(req, res) {
       });
     }
 
-    // Find clinician by email
-    const result = await db.queryOne(
-      'SELECT * FROM clinicians WHERE email = ?',
-      [email]
+    // queryOne returns the row directly or null — null means no clinician with that email
+    const clinician = await db.queryOne(
+        'SELECT * FROM clinicians WHERE email = ?',
+        [email]
     );
 
-    // Check if clinician exists
-    if (!result.success || !result.data) {
+    // Generic error message intentional — does not reveal whether email or password is wrong
+    if (!clinician) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
@@ -133,9 +116,7 @@ async function login(req, res) {
       });
     }
 
-    const clinician = result.data;
-
-    // Compare password with hashed password in database
+    // Compares the plaintext password against the stored bcrypt hash
     const isPasswordValid = await bcrypt.compare(password, clinician.password);
 
     if (!isPasswordValid) {
@@ -146,7 +127,8 @@ async function login(req, res) {
       });
     }
 
-    // Login successful! Return clinician info
+    // Returns clinician info on success — password excluded from response
+    //auth session is managed by Clerk on the frontend
     res.json({
       success: true,
       message: 'Login successful!',
@@ -167,7 +149,4 @@ async function login(req, res) {
   }
 }
 
-module.exports = {
-  signup,
-  login
-};
+module.exports = { signup, login };
