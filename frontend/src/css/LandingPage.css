@@ -1,0 +1,208 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* Override global lp-root which sets height:100vh + overflow:hidden */
+.lp-root {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+}
+
+/* Hero should only take viewport height, not flex:1 that stretches forever */
+.lp-hero {
+    min-height: calc(100vh - 56px - 36px); /* viewport minus nav minus footer */
+    flex: unset !important;
+}
+
+/* ── Steps ── */
+.lp-steps-section {
+    background: #ffffff;
+    border-top: 1px solid rgba(37, 99, 235, 0.08);
+    border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+    padding: 72px 40px;
+}
+
+.lp-steps-inner {
+    max-width: 1060px;
+    margin: 0 auto;
+}
+
+.lp-steps-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 34px;
+    font-weight: 700;
+    color: #0f2744;
+    text-align: center;
+    margin-bottom: 44px;
+    letter-spacing: -0.01em;
+}
+
+.lp-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.lp-step-card {
+    background: #f7fafd;
+    border: 1px solid rgba(37, 99, 235, 0.1);
+    border-radius: 14px;
+    padding: 28px 24px;
+    position: relative;
+}
+
+.lp-step-card-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 40px;
+    font-weight: 700;
+    color: #2563eb;
+    line-height: 1;
+    margin-bottom: 14px;
+}
+
+.lp-step-card-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f2744;
+    margin-bottom: 8px;
+}
+
+.lp-step-card-desc {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: #4a6480;
+    line-height: 1.7;
+}
+
+/* ── Principles ── */
+.lp-principles-section {
+    background: #f7fafd;
+    padding: 72px 40px;
+}
+
+.lp-principles-inner {
+    max-width: 1060px;
+    margin: 0 auto;
+}
+
+.lp-principles-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 34px;
+    font-weight: 700;
+    color: #0f2744;
+    text-align: center;
+    margin-bottom: 44px;
+    letter-spacing: -0.01em;
+}
+
+.lp-principles-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+}
+
+.lp-principle-item-dot {
+    display: block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-bottom: 14px;
+}
+.lp-principle-item-dot--blue  { background: #2563eb; }
+.lp-principle-item-dot--amber { background: #f59e0b; }
+.lp-principle-item-dot--green { background: #10b981; }
+
+.lp-principle-item-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f2744;
+    margin-bottom: 8px;
+}
+
+.lp-principle-item-desc {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: #4a6480;
+    line-height: 1.75;
+}
+
+/* ── Indicators ── */
+.lp-indicators-section {
+    background: #ffffff;
+    border-top: 1px solid rgba(37, 99, 235, 0.08);
+    border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+    padding: 72px 40px;
+}
+
+.lp-indicators-inner {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.lp-indicators-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 34px;
+    font-weight: 700;
+    color: #0f2744;
+    margin-bottom: 40px;
+    letter-spacing: -0.01em;
+}
+
+.lp-indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    text-align: left;
+}
+
+.lp-indicator-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #0f2744;
+}
+
+.lp-indicators-grid .lp-indicator-item:nth-last-child(-n+3) {
+    border-bottom: none;
+}
+
+/* ── Closing CTA ── */
+.lp-closing-section {
+    background: #f7fafd;
+    padding: 80px 40px;
+    text-align: center;
+}
+
+.lp-closing-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 38px;
+    font-weight: 700;
+    color: #0f2744;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+}
+
+.lp-closing-sub {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: #4a6480;
+    margin-bottom: 28px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .lp-steps-section,
+    .lp-principles-section,
+    .lp-indicators-section,
+    .lp-closing-section    { padding: 52px 20px; }
+    .lp-steps-grid         { grid-template-columns: 1fr; }
+    .lp-principles-grid    { grid-template-columns: 1fr; gap: 28px; }
+    .lp-indicators-grid    { grid-template-columns: repeat(2, 1fr); }
+    .lp-closing-heading    { font-size: 28px; }
+}
