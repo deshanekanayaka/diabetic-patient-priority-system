@@ -95,7 +95,7 @@ export default function LandingPage() {
                             <div className="lp-step-card-num">2</div>
                             <h3 className="lp-step-card-title">Auto risk score</h3>
                             <p className="lp-step-card-desc">
-                                The Random Forest model weighs all 12 factors and returns a
+                                The Random Forest model weighs all 13 factors and returns a
                                 0–100 score classified as Low, Medium or High — instantly.
                             </p>
                         </div>
@@ -150,10 +150,11 @@ export default function LandingPage() {
                     <h2 className="lp-indicators-heading">Every factor, accounted for.</h2>
                     <div className="lp-indicators-grid">
                         {[
-                            'HbA1c', 'BMI', 'Blood pressure',
-                            'Cholesterol', 'Triglycerides', 'HDL',
-                            'LDL', 'VLDL', 'Random blood sugar',
-                            'Age', 'Social setting',
+                            'HbA1c', 'BMI', 'Blood pressure (systolic)',
+                            'Blood pressure (diastolic)', 'Cholesterol', 'Triglycerides',
+                            'HDL', 'LDL', 'VLDL',
+                            'Random blood sugar', 'Age', 'Gender',
+                            'Social setting',
                         ].map(ind => (
                             <div className="lp-indicator-item" key={ind}>
                                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
