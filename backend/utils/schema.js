@@ -38,7 +38,8 @@ const patientSchema = z.object({
     rbs:           requiredNumber(0,    600,  'Min 0',   'Max 600'  ),
 });
 
-// Extends the base schema with clerk_id, which is only required when creating a new patient
+// Extends the base schema with clerk_id — only required on create, not update
+// clerk_id cannot change after a patient is created so it is excluded from patientSchema
 const patientCreateSchema = patientSchema.extend({
     clerk_id: z.string().min(1, 'clerk_id is required'),
 });
