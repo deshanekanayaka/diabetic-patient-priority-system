@@ -9,22 +9,26 @@
 
 const mysql = require('mysql2');
 
-// Create a connection pool
-// A pool manages multiple connections and reuses them efficiently
+// Creates a pool of reusable MySQL connections instead of opening a new
+// connection on every request — improves performance under concurrent load
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
+  // No fallback for password — a default password would be a security risk
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'diabetic_db',
+  // Queues requests when all connections are busy instead of rejecting them
   waitForConnections: true,
-  connectionLimit: 10,  // Maximum 10 simultaneous connections
-  queueLimit: 0         // No limit on queued connection requests
+  // Caps simultaneous connections to avoid overloading the database
+  connectionLimit: 10,
+  // No limit on queued connection requests
+  queueLimit: 0
 });
 
-// Convert pool to use promises instead of callbacks
+// Wraps the pool with promise support so async/await can be used instead of callbacks
 const promisePool = pool.promise();
 
-// Test if database connection works
+// Runs a lightweight query to confirm the database is reachable at startup
 async function testConnection() {
   try {
     await promisePool.query('SELECT 1');
@@ -36,25 +40,29 @@ async function testConnection() {
   }
 }
 
-// Execute a SELECT query — throws on failure so the caller handles it
+// Used for SELECT statements — returns the rows array from the result
+// throws on failure so the calling controller handles the error
 async function query(sql, params = []) {
   const [rows] = await promisePool.query(sql, params);
   return rows;
 }
 
-// Execute an INSERT/UPDATE/DELETE query — throws on failure so the caller handles it
+// Used for INSERT/UPDATE/DELETE — returns result metadata e.g. insertId, affectedRows
+// throws on failure so the calling controller handles the error
 async function execute(sql, params = []) {
   const [result] = await promisePool.execute(sql, params);
   return result;
 }
 
-// Get a single row — returns null if nothing found
+// Convenience wrapper around query() that returns only the first row
+// returns null instead of undefined if no match found — easier for callers to check
 async function queryOne(sql, params = []) {
   const [rows] = await promisePool.query(sql, params);
   return rows[0] || null;
 }
 
-// Close all connections when app shuts down
+// Gracefully releases all connections when the app shuts down
+// prevents dangling connections from staying open on the database server
 async function closePool() {
   try {
     await promisePool.end();
@@ -65,7 +73,8 @@ async function closePool() {
 }
 
 module.exports = {
-  pool: promisePool,  // Direct access to pool if needed
+  // Exports direct pool access in case a controller needs custom queries
+  pool: promisePool,
   testConnection,
   query,
   execute,
