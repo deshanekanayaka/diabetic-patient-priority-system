@@ -16,29 +16,30 @@ def load_and_preprocess_data(csv_path):
     print(f"Loaded {len(df)} patient records")
 
     # Basic cleaning
+    # Removes unnamed index column and FBS column from the dataframe
     df = df.drop(columns=["Unnamed: 0", "FBS"])
+
+    # Strips whitespace from all column names
     df.columns = df.columns.str.strip()
 
-    # Process Age
+    # Removes 'Years'/'Year' text from Age values and converts to numeric
     df["Age"] = df["Age"].str.replace("Years", "").str.replace("Year", "").str.strip()
     df["Age"] = pd.to_numeric(df["Age"], errors="coerce")
 
-    # Process Blood Pressure
+    # Splits BP string (e.g. "120/80") into two separate numeric columns
     bp_split = df["BP"].str.split("/", expand=True)
     df["BP_Systolic"] = pd.to_numeric(bp_split[0], errors="coerce")
     df["BP_Diastolic"] = pd.to_numeric(bp_split[1], errors="coerce")
 
-    # Convert BMI
-    df["BMI"] = pd.to_numeric(df["BMI"], errors="coerce")
-
-    # Fill missing values with median
+    # Fills missing values in each column with that column's median
     for col in ["Age", "BP_Systolic", "BP_Diastolic", "BMI", "RBS"]:
         df[col] = df[col].fillna(df[col].median())
 
-    # Encode categorical variables
+    # Encodes Sex as binary numeric (MALE=1, FEMALE=0) for model input
     df["Sex_Encoded"] = df["Sex"].map({"MALE": 1, "FEMALE": 0})
 
-    # Create risk categories using helper functions
+    # Applies calculate_risk_level to each row (axis=1 = row-wise) and stores
+    # the result as the target column for model training
     df["Risk_Category"] = df.apply(calculate_risk_level, axis=1)
 
     print()
@@ -86,6 +87,7 @@ def get_age_points(age):
     return 0
 
 def calculate_risk_level(row):
+    # Sums risk points across all health indicators for a single patient row
     points = (
         get_hba1c_points(row["HbA1c"])
         + get_rbs_points(row["RBS"])
@@ -93,7 +95,7 @@ def calculate_risk_level(row):
         + get_bp_points(row["BP_Systolic"], row["BP_Diastolic"])
         + get_age_points(row["Age"])
     )
-
+    # Maps total points to a risk category: 0=Low, 1=Medium, 2=High
     if points < 34:
         return 0
     elif points < 67:
@@ -104,8 +106,7 @@ def calculate_risk_level(row):
 def prepare_features(df):
     print()
     print("Preparing features")
-
-    feature_columns = [
+        # Selected seven clinical features used as model inputs    feature_columns = [
         "HbA1c",
         "Age",
         "Sex_Encoded",
@@ -145,10 +146,11 @@ def fit_and_evaluate_model(
     max_features=0.8,
     max_samples=0.8,
 ):
+    # Initialises Random Forest with specified hyperparameters
     random_forest = RandomForestClassifier(
         random_state=0,
         max_depth=max_depth,
-        min_samples_split=min_samples_split,
+        min_samples_split=min_samples_split,  # Float = fraction of total samples required to split a node
         max_features=max_features,
         max_samples=max_samples,
     )
@@ -169,7 +171,7 @@ def fit_and_evaluate_model(
 def hyperparameter_tuning(x_train, y_train):
     print()
     print("HYPERPARAMETER TUNING WITH GRIDSEARCH CV")
-
+    # Defines all parameter combinations to search — 256 total combinations
     param_grid = [
         {
             "max_depth": [3, 5, 7, 10],
@@ -187,6 +189,7 @@ def hyperparameter_tuning(x_train, y_train):
     print()
 
     model = RandomForestClassifier()
+    #3-fold cross-validation to keep search time manageable across all combinations
     search = GridSearchCV(estimator=model, param_grid=param_grid, cv=3, verbose=1)
     search.fit(x_train, y_train)
 
@@ -226,8 +229,9 @@ def analyze_results(search):
 def k_fold_validation(model, x, y):
     print()
     print("K-FOLD CROSS-VALIDATION")
-
+    # 5-fold split preserving class distribution across all folds for reliable accuracy estimate
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # Runs model evaluation across all 5 folds and returns accuracy score per fold
     cv_scores = cross_val_score(model, x, y, cv=skf, scoring="accuracy")
 
     print()
@@ -335,3 +339,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+#References
+#https://stackoverflow.com/questions/14745022/how-to-split-a-dataframe-string-column-into-two-columns
+#https://www.digitalocean.com/community/tutorials/k-fold-cross-validation-python
+#https://www.geeksforgeeks.org/machine-learning/feature-importance-with-random-forests/
