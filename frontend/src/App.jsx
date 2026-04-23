@@ -86,6 +86,9 @@ export default function App() {
             <Route
                 path="/analytics"
                 element={
+                    // children is a function (render prop pattern)- ProtectedRoute calls it
+                    // with the user object so the child component receives clerkId without
+                    // needing to access Clerk directly
                     <ProtectedRoute>
                         {(user) => <Analytics clerkId={user.id} />}
                     </ProtectedRoute>
