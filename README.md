@@ -1,273 +1,230 @@
 # Diabetic Patient Priority System
 
-![Diabetic Risk Classification Dashboard](./assets/dashboard-preview.png)
+For clinicians: A smart dashboard that automatically ranks your diabetic patients by clinical urgency — so your team always knows who needs attention first.
+For developers: A full-stack system built with React, Node.js, MySQL, and a Python Random Forest classifier that scores patients across 13 clinical indicators on a 0–100 risk scale.
 
-## Introduction
 
-The **Diabetic Patient Priority System** is a web-based clinical decision support tool designed to help healthcare providers efficiently manage and prioritize diabetic patients based on their clinical risk factors. The system leverages the Random Forest classification to automatically assess patient health indicators and categorize them into risk levels (Low, Medium, High), enabling clinicians to identify high-priority cases and provide timely interventions.
-
-By integrating automated risk scoring with an intuitive dashboard interface, the system streamlines patient management workflows and supports better health outcomes through data-driven prioritization.
+---
 
 ## Tech Stack
 
-### Frontend
-- **React** - Component-based UI library for building interactive interfaces
-- **HTML5/CSS3** - Markup and styling
-- **Vite** - Fast build tool and development server
+**Frontend**
+- React — component-based UI
+- Vite — build tool and development server
+- Clerk — authentication and session management
 
-### Backend
-- **Node.js** - JavaScript runtime environment
-- **Express.js** - Web application framework for RESTful API development
+**Backend**
+- Node.js + Express.js — RESTful API
+- MySQL — patient data storage
+- Zod — server-side input validation
 
-### Database
-- **MySQL** - Relational database for secure patient data storage
+**Machine Learning**
+- Python + FastAPI — ML service
+- scikit-learn — Random Forest classifier
+- pandas / numpy — data processing
 
-### Analytics & Machine Learning
-- **Python** - Data analysis and machine learning model development
-- **scikit-learn** - Machine learning library for model training (Random Forest classifier)
-- **pandas/numpy** - Data manipulation and numerical computing
+---
 
 ## Features
 
-### Frontend Features
-- **Interactive Dashboard** - Real-time overview of patient risk distribution with summary cards showing High, Medium, and Low-risk patient counts
-- **Priority Patient List** - Sortable, searchable table displaying all patients ordered by risk score (highest risk first)
-- **Patient Search** - Quick search functionality to find patients by Patient ID
-- **Risk Filtering** - Filter patients by risk level for focused review
-- **Data Entry Forms** - User-friendly forms for adding and editing patient records with validation
+### Dashboard
+- Summary cards showing High, Medium, and Low risk patient counts
+- Priority patient list sorted by risk score (highest first)
+- Search by Patient ID (e.g. `p8` or `8`)
+- Filter patients by risk level
 
-### Backend Features
-- **RESTful API** - Endpoints for CRUD operations on patient data
-- **Secure Authentication** - Login system for clinician access control
-- **Data Validation** - Server-side validation ensuring data integrity and clinical reasonability
-- **Real-time Risk Calculation** - Automatic risk score computation on data entry/modification
-- **Multi-user Support** - Concurrent user access without performance degradation
+### Patient Management
+- Add, edit, and delete patient records
+- Client and server-side validation with clinical range checking
+- Risk score and category automatically recalculated on every save
 
-### Machine Learning Features
-- **Random Forest Model** - Trained on historical patient data for accurate risk prediction
-- **Automated Risk Scoring** - ML-powered classification on a 0-100 scale
-- **Multi-factor Analysis** - Evaluates 14+ clinical indicators including:
-  - HbA1c (Glycated Hemoglobin)
-  - BMI (Body Mass Index)
-  - Blood Pressure (Systolic/Diastolic)
-  - Cholesterol levels (Total, HDL, LDL, VLDL, Triglycerides)
-  - Blood sugar levels (FBS, RBS)
-  - Demographic factors (Age, Sex, Social Life)
-  - Genetic Risk Count
-- **Feature Importance Display** - Shows which clinical factors contribute most to each patient's risk score
-- **Model Retraining Capability** - System designed to improve accuracy as more patient data is collected
+### Machine Learning
+- Random Forest model trained on historical patient data
+- Risk scored on a 0–100 continuous scale
+- Three risk categories: Low (0–39), Medium (40–69), High (70–100)
+- 7 features used for prediction: HbA1c, Age, Sex, BP Systolic, BP Diastolic, BMI, RBS
+- 13 clinical indicators collected via the form: Age, Sex, Social Life, BP Systolic, BP Diastolic, Cholesterol, Triglycerides, HDL, LDL, VLDL, HbA1c, BMI, RBS
 
-## Quick Start
+### Analytics
+- Age distribution chart split by risk category
+- Risk score histogram across 10-point bands
 
-Follow these steps to set up the project locally on your machine.
+---
 
-### Prerequisites
+## Prerequisites
 
-Make sure you have the following installed on your machine:
+- Git
+- Node.js (v14 or higher)
+- npm
+- MySQL (v8.0 or higher)
+- Python (v3.8 or higher)
 
-- **Git** - Version control system
-- **Node.js** (v14 or higher) - JavaScript runtime
-- **npm** (Node Package Manager) - Comes with Node.js
-- **MySQL** (v8.0 or higher) - Database server
-- **Python** (v3.8 or higher) - For ML model training and analytics
+---
 
-### Cloning the Repository
+## Setup
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/deshanekanayaka/diabetic-risk-classification-system
 cd diabetic-risk-classification-system
 ```
 
-### Frontend Setup
-
-1. Navigate to the frontend directory:
+### 2. Frontend Setup
 
 ```bash
 cd frontend
-```
-
-2. Install frontend dependencies:
-
-```bash
 npm install
 ```
 
-3. Create a `.env` file in the frontend root directory:
+Create a `.env` file in the `frontend/` directory:
 
-```bash
-VITE_API_BASE_URL=http://localhost:3000/api
-VITE_APP_NAME=Diabetic Risk Classification System
+```env
+VITE_API_URL=http://localhost:3000
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
 ```
 
-### Backend Setup
-
-1. Navigate to the backend directory:
+### 3. Backend Setup
 
 ```bash
 cd backend
-```
-
-2. Install backend dependencies:
-
-```bash
 npm install
 ```
 
-3. Create a `.env` file in the backend root directory:
+Create a `.env` file in the `backend/` directory:
 
-```bash
-# Server Configuration
+```env
+# Server
 PORT=3000
 NODE_ENV=development
 
-# Database Configuration
+# Database
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=your_mysql_password
 DB_NAME=diabetic_db
 DB_PORT=3306
 
-# Authentication
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRE=24h
-
-# Encryption
-ENCRYPTION_KEY=your_encryption_key_here
-
-# Python ML Service
-PYTHON_SERVICE_URL=http://localhost:5000
+# ML Service
+ML_SERVICE_URL=http://localhost:8001
 ```
 
-### Database Setup
-
-1. Log into MySQL:
+### 4. Database Setup
 
 ```bash
 mysql -u root -p
 ```
-
-2. Create the database:
 
 ```sql
 CREATE DATABASE diabetic_db;
 USE diabetic_db;
 ```
 
-3. Run the database schema script:
-
 ```bash
 mysql -u root -p diabetic_db < backend/database/schema.sql
 ```
 
-4. (Optional) Load sample data:
+Optionally load sample data:
 
 ```bash
 mysql -u root -p diabetic_db < backend/database/seed.sql
 ```
 
-### Machine Learning Setup
-
-1. Navigate to the ML directory:
+### 5. Machine Learning Setup
 
 ```bash
 cd machine-learning
-```
-
-2. Create a Python virtual environment:
-
-```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install Python dependencies:
-
-```bash
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+python train_model.py           # trains and saves the model
 ```
 
-4. Train the initial model (if not already trained):
+---
 
-```bash
-python train_model.py
-```
+## Running the Project
 
-### Running the Project
+Open three terminal windows:
 
-#### Start the Backend Server
-
+**Terminal 1 — Backend**
 ```bash
 cd backend
-npm run dev
+node server.js
 ```
+Runs at `http://localhost:3000`
 
-The backend server will start at `http://localhost:3000`
-
-#### Start the ML Service
-
+**Terminal 2 — ML Service**
 ```bash
 cd machine-learning
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-uvicorn app:app --reload --port 5000
+source venv/bin/activate        # Windows: venv\Scripts\activate
+uvicorn app:app --reload --port 8001
 ```
+Runs at `http://localhost:8001`
 
-The ML service will start at `http://localhost:5000`
-
-#### Start the Frontend Development Server
-
+**Terminal 3 — Frontend**
 ```bash
 cd frontend
 npm run dev
 ```
+Runs at `http://localhost:5173`
 
-The frontend will start at `http://localhost:5173` (or the next available port)
+---
 
-Open `http://localhost:5173` in your browser to view the application.
+## API Endpoints
 
-### Building for Production
+Base URL: `http://localhost:3000`
 
-To create an optimized production build:
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/signup` | Create clinician account |
+| POST | `/api/auth/login` | Clinician login |
+
+### Patients
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/patients` | Get all patients (supports `clerk_id`, `riskLevel`, `sortBy` query params) |
+| GET | `/api/patients/:id` | Get patient by ID |
+| POST | `/api/patients` | Add new patient |
+| PUT | `/api/patients/:id` | Update patient record |
+| DELETE | `/api/patients/:id` | Delete patient |
+
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/analytics` | Get age distribution and risk score histogram data |
+
+### ML Service
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| POST | `/predict` | Predict risk score for a patient |
+
+---
+
+## Production Build
 
 ```bash
 cd frontend
 npm run build
 ```
 
-The production-ready files will be in the `dist` directory.
+Output will be in the `dist/` directory.
 
-## API Endpoints
-
-**Base URL:** `http://localhost:3000`
-
-### Authentication
-- `POST /api/auth/login` - Clinician login
-- `POST /api/auth/logout` - Logout
-
-### Patients
-- `GET /api/patients` - Get all patients (with filtering/sorting)
-- `GET /api/patients/:id` - Get patient by ID
-- `POST /api/patients` - Add new patient
-- `PUT /api/patients/:id` - Update patient record
-- `DELETE /api/patients/:id` - Delete patient
-
-### Risk Analysis
-- `POST /api/risk/calculate` - Calculate risk score for patient data
-- `GET /api/risk/summary` - Get risk distribution summary
+---
 
 ## Future Enhancements
 
 - Integration with hospital Electronic Medical Record (EMR) systems
-- Mobile application for on-the-go patient management
-- AI-based diagnostic predictions and recommendations
+- Mobile application
 - Automated notifications and reminders for follow-up appointments
-- Advanced analytics dashboard with trend visualization
-- Patient outcome tracking and model performance monitoring
+- Patient outcome tracking and model retraining on real clinical labels
 - Export functionality for reports and analytics
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-**Note**: This is a prototype system designed for educational and demonstration purposes. For production deployment in clinical settings, additional regulatory compliance, security audits, and clinical validation are required.
+## Note
+
+This is a prototype system built for educational purposes. 
+For deployment in clinical settings, additional regulatory compliance,
+security audits, and clinical validation are required.
