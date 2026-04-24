@@ -14,9 +14,9 @@ const mysql = require('mysql2');
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  // No fallback for password — a default password would be a security risk
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'diabetic_db',
+  port: process.env.DB_PORT || 3306,
   // Queues requests when all connections are busy instead of rejecting them
   waitForConnections: true,
   // Caps simultaneous connections to avoid overloading the database
