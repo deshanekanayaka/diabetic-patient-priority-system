@@ -5,7 +5,7 @@ import PatientFormModal from './PatientFormModal';
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 // Converts a DB patient record into the shape the form fields expect
-// DB values can be numbers or null; the form expects strings or ''
+// DB values can be numbers or null; the form expects strings or '' (empty strings)
 const toFormValues = (patient) => ({
     age:           patient.age           ?? '',
     sex:           patient.sex           ?? 'male',
@@ -84,3 +84,9 @@ const EditPatientModal = ({ isOpen, onClose, onPatientUpdated, patient }) => {
 };
 
 export default EditPatientModal;
+
+//References
+//https://www.taniarascia.com/crud-app-in-react-with-hooks/
+//https://www.freecodecamp.org/news/javascript-advanced-operators/
+//https://www.digitalocean.com/community/tutorials/react-axios-react
+//https://designrevision.com/react-axios/

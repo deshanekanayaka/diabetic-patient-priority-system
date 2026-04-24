@@ -21,7 +21,7 @@ const Header = () => {
             <nav className="header-nav">
                 <Link
                     to="/dashboard"
-                    // Highlights the link when the current path matches
+                    // Appends "active" class to the link whose path matches the current URL
                     className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}
                 >
                     Dashboard

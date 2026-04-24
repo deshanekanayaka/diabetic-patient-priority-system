@@ -1,8 +1,7 @@
 import React from 'react';
 
-// StatCards no longer fetches on its own.
-// Dashboard.jsx owns the data and passes counts + loading as props,
-// so the cards update the instant a patient is added/edited/deleted.
+// counts is derived in Dashboard.jsx by iterating the patients array
+// and passed down as a prop
 const StatCards = ({ counts = { high: 0, medium: 0, low: 0 }, loading = false }) => {
     const display = (val) => (loading ? '…' : val);
 
