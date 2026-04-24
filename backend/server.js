@@ -15,7 +15,10 @@ const PORT = process.env.PORT || 3000;
 
 // Allows requests from the Vite dev server
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'https://diabetic-patient-priority-system.vercel.app'
+  ],
   credentials: true
 }));
 
