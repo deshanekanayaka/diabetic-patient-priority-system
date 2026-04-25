@@ -1,14 +1,10 @@
 const { z } = require('zod');
 
-// Coerces the incoming value to a number, returning a sentinel string "MISSING"
-// for undefined/null/empty/NaN so Zod issues a validation error instead of
-// passing NaN to the ML service
 const requiredNumber = (min, max, minMsg, maxMsg) =>
     z.preprocess(
         (val) => {
             if (val === undefined || val === null || val === '') return 'MISSING';
             const num = Number(val);
-            // Non-numeric strings like "abc" coerce to NaN, which is also treated as missing
             return isNaN(num) ? 'MISSING' : num;
         },
         z.number({
@@ -19,13 +15,10 @@ const requiredNumber = (min, max, minMsg, maxMsg) =>
             .max(max, maxMsg)
     );
 
-// Defines the clinical value ranges for all patient fields
-// Ranges reflect clinically plausible bounds rather than strict normal ranges
 const patientSchema = z.object({
     age:           requiredNumber(0,    120,  'Min 0',   'Max 120'  ),
     sex:           z.enum(['male', 'female'],  { required_error: 'Required' }),
     social_life:   z.enum(['city', 'village'], { required_error: 'Required' }),
-    // Blood pressure stored in kPa units, not mmHg — ranges reflect that scale
     bp_systolic:   requiredNumber(5,    25,   'Min 5',   'Max 25'   ),
     bp_diastolic:  requiredNumber(3,    15,   'Min 3',   'Max 15'   ),
     bmi:           requiredNumber(0,    60,   'Min 0',   'Max 60'   ),
@@ -38,10 +31,27 @@ const patientSchema = z.object({
     rbs:           requiredNumber(0,    600,  'Min 0',   'Max 600'  ),
 });
 
-// Extends the base schema with clerk_id — only required on create, not update
-// clerk_id cannot change after a patient is created so it is excluded from patientSchema
 const patientCreateSchema = patientSchema.extend({
     clerk_id: z.string().min(1, 'clerk_id is required'),
 });
 
-module.exports = { patientSchema, patientCreateSchema };
+// Warning thresholds based on clinical guidelines.
+// These do not block submission — they alert the clinician to unusual but valid values.
+// Sources: ADA Standards of Care, Diabetes UK, WHO BMI Classification, NICE Lipid Guidelines
+const checkWarnings = (data) => {
+    const warnings = {};
+
+    if (data.hba1c >= 6.5) warnings.hba1c = 'Diabetic range';
+    if (data.hba1c < 4.0)  warnings.hba1c = 'Unusually low';
+    if (data.bmi >= 30)    warnings.bmi   = 'Obese';
+    if (data.bmi < 18.5)   warnings.bmi   = 'Underweight';
+    if (data.bp_systolic >= 14.0)  warnings.bp_systolic  = 'Above target';
+    if (data.bp_diastolic >= 9.0)  warnings.bp_diastolic = 'Above target';
+    if (data.rbs >= 200)           warnings.rbs          = 'Diabetic threshold';
+    if (data.cholesterol >= 240)   warnings.cholesterol  = 'High';
+    if (data.ldl >= 130)           warnings.ldl          = 'Borderline high';
+    if (data.hdl < 25)             warnings.hdl          = 'Critically low';
+
+    return warnings;
+};
+module.exports = { patientSchema, patientCreateSchema, checkWarnings };
