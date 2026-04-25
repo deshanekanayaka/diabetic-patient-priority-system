@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AddPatientModal from './AddPatientModal';
 import EditPatientModal from './EditPatientModal';
+import '../css/index.css';
+import '../css/PriorityTable.css';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];

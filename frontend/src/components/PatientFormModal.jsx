@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { patientSchema } from '../utils/schema.js';
+import '../css/index.css';
+import '../css/Modal.css';
 
 // Empty strings for number fields — z.coerce.number() converts them to numbers on submit
 // eslint-disable-next-line react-refresh/only-export-components
