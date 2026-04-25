@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-// Converts empty/null/undefined to undefined so Zod fires required_error instead of invalid_type_error
-// Passes NaN through so Zod rejects non-numeric strings with invalid_type_error
 const requiredNumber = (min, max, minMsg, maxMsg) =>
     z.preprocess(
         (val) => {
@@ -17,13 +15,10 @@ const requiredNumber = (min, max, minMsg, maxMsg) =>
             .max(max, maxMsg)
     );
 
-// Defines clinically plausible value ranges for all patient fields
-// Used by both the frontend form (via zodResolver) and the backend for validation
 export const patientSchema = z.object({
     age:           requiredNumber(0,    120,  'Min 0',   'Max 120'  ),
     sex:           z.enum(['male', 'female'],  { required_error: 'Required' }),
     social_life:   z.enum(['city', 'village'], { required_error: 'Required' }),
-    // Blood pressure stored in kPa units, not mmHg — ranges reflect that scale
     bp_systolic:   requiredNumber(5,    25,   'Min 5',   'Max 25'   ),
     bp_diastolic:  requiredNumber(3,    15,   'Min 3',   'Max 15'   ),
     bmi:           requiredNumber(0,    60,   'Min 0',   'Max 60'   ),
@@ -36,7 +31,40 @@ export const patientSchema = z.object({
     rbs:           requiredNumber(0,    600,  'Min 0',   'Max 600'  ),
 });
 
-// Extends the base schema with clerk_id, which is only required when creating a new patient
 export const patientCreateSchema = patientSchema.extend({
     clerk_id: z.string().min(1, 'clerk_id is required'),
 });
+
+// Returns an object mapping field names to short warning labels.
+// Each key matches the field name so PatientFormModal can highlight
+// the exact input that has an unusual but clinically valid value.
+// Sources: ADA Standards of Care, Diabetes UK, WHO BMI Classification, NICE Lipid Guidelines
+export const checkWarnings = (data) => {
+    const warnings = {};
+
+    // ADA: HbA1c ≥6.5% indicates diabetic range; <4.0% is unusually low
+    if (data.hba1c >= 6.5) warnings.hba1c = 'Diabetic range';
+    if (data.hba1c < 4.0)  warnings.hba1c = 'Unusually low';
+
+    // WHO: BMI ≥30 indicates obesity; <18.5 indicates underweight
+    if (data.bmi >= 30)   warnings.bmi = 'Obese';
+    if (data.bmi < 18.5)  warnings.bmi = 'Underweight';
+
+    // Diabetes UK: BP target for diabetic patients is below 140/90mmHg (14.0/9.0 in dataset units)
+    if (data.bp_systolic >= 14.0)  warnings.bp_systolic  = 'Above target';
+    if (data.bp_diastolic >= 9.0)  warnings.bp_diastolic = 'Above target';
+
+    // ADA: RBS ≥200 mg/dL meets the threshold for diabetes diagnosis
+    if (data.rbs >= 200) warnings.rbs = 'Diabetic threshold';
+
+    // NICE: Total cholesterol ≥240 mg/dL is considered high
+    if (data.cholesterol >= 240) warnings.cholesterol = 'High';
+
+    // NICE: LDL ≥130 mg/dL is borderline high for diabetic patients
+    if (data.ldl >= 130) warnings.ldl = 'Borderline high';
+
+    // Threshold lowered to <25 based on dataset distribution to avoid false positives
+    if (data.hdl < 25) warnings.hdl = 'Critically low';
+
+    return warnings;
+};
