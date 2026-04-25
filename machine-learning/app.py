@@ -7,14 +7,12 @@ import pickle
 import os
 from typing import Optional
 
-# Creates the FastAPI application instance
 app = FastAPI(
     title="Diabetic Patient Priority System API",
     description="Random Forest classification for calculating patient risk scores",
     version="1.0.0",
 )
 
-# Allows cross-origin requests from any domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,28 +21,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Builds absolute path to model file regardless of where the script is run from
 MODEL_PATH = os.path.join(
     os.path.dirname(__file__), "models", "random_forest_model.pkl"
 )
 
-# Loads serialised model from disk at startup, sets model=None if file missing
+# The pkl file stores both the trained model and the feature names used during training.
+# Loading them together ensures the labels always match what the model actually learned on.
 try:
     with open(MODEL_PATH, "rb") as f:
-        model = pickle.load(f)
+        model_package = pickle.load(f)
+        model = model_package["model"]
+        FEATURE_LABELS = model_package["feature_names"]
     print("Random Forest model loaded successfully")
 except FileNotFoundError:
     print("Model file not found. Please run train_model.py first")
     model = None
+    FEATURE_LABELS = []
 
 
-# Pydantic model that validates incoming JSON request body before prediction
-# FastAPI automatically runs this validation when PatientData is used as a type hint
-# Called via: def predict_risk(patient: PatientData)
 class PatientData(BaseModel):
-
-    # ge = greater than or equal, le = less than or equal
-    # Field(...) = required, Field(None) = optional
     age: int = Field(..., ge=0, le=120, description="Patient age in years")
     sex: str = Field(..., description="Patient sex: 'male' or 'female'")
     hba1c: Optional[float] = Field(None, ge=0, le=20, description="HbA1c percentage")
@@ -53,33 +48,26 @@ class PatientData(BaseModel):
     bp_diastolic: Optional[float] = Field(None, ge=3, le=15, description="Diastolic BP (dataset format e.g. 8.0 = 80mmHg)")
     rbs: Optional[float] = Field(None, ge=0, le=600, description="Random Blood Sugar")
 
-    # @field_validator("sex") — runs this method when the sex field is being validated
-    # @classmethod — required by Pydantic because validation runs before the object
-    # is fully created, so no instance exists yet; cls = the class, v = the raw value
     @field_validator("sex")
     @classmethod
     def validate_sex(cls, v):
         if v.lower() not in ["male", "female"]:
             raise ValueError("Sex must be 'male' or 'female'")
-        # Returns cleaned lowercase value back to the object
         return v.lower()
 
 
-# Pydantic model that defines the structure of the response sent back to the backend
-# Used as response_model in: @app.post("/predict", response_model=RiskPrediction)
-# FastAPI automatically serialises the returned object to match this structure
+# top_factors holds the 3 feature names that contributed most to the risk score,
+# pulled from the model itself rather than typed manually.
 class RiskPrediction(BaseModel):
     risk_score: float
     risk_category: str
     confidence_low: float
     confidence_medium: float
     confidence_high: float
+    top_factors: list[str]
 
 
-# Called inside predict_risk() to prepare data before passing to the model
 def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
-
-    # Converts PatientData object to a dictionary then to a single-row DataFrame
     patient_dict = data.model_dump()
     df = pd.DataFrame([patient_dict])
 
@@ -119,10 +107,6 @@ def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
     return df[feature_columns]
 
 
-# Called inside predict_risk() after model.predict_proba() returns probabilities
-# Converts class probabilities into a continuous 0-100 priority score
-# High risk maps to 70-100, medium to 40-70, low to 0-40
-# prob_high/medium/low positions the score precisely within each band
 def calculate_priority_score(probabilities: np.ndarray, predicted_class: int) -> float:
     prob_low = probabilities[0]
     prob_medium = probabilities[1]
@@ -138,9 +122,6 @@ def calculate_priority_score(probabilities: np.ndarray, predicted_class: int) ->
     return priority_score
 
 
-# Called inside predict_risk() after calculate_priority_score()
-# Maps the numeric priority score back to a string category label
-# Thresholds match the score bands defined in calculate_priority_score
 def calculate_risk_category(priority_score: float) -> str:
     if priority_score >= 70:
         return "high"
@@ -150,8 +131,26 @@ def calculate_risk_category(priority_score: float) -> str:
         return "low"
 
 
-# @app.get("/") registers this function as the GET / route
-# Acts as a health check — called by the backend to verify the ML service is running
+# feature_importances_ returns an array of weights with no names attached.
+# We sort by weight descending, take the top n indices, and look up the clinical
+# label for each index from FEATURE_LABELS — which came from the model package itself.
+def get_top_factors(model, n: int = 3) -> list[str]:
+
+    # Build a small dataframe with feature names and their importance scores
+    importance_df = pd.DataFrame({
+        'feature': FEATURE_LABELS,
+        'importance': model.feature_importances_
+    })
+
+    # Sort by importance descending and take the top n rows
+    top_df = importance_df.sort_values('importance', ascending=False).head(n)
+
+    # Return just the feature names as a plain list
+    top_names = top_df['feature'].tolist()
+
+    return top_names
+
+
 @app.get("/")
 def read_root():
     return {
@@ -165,14 +164,9 @@ def read_root():
     }
 
 
-# @app.post("/predict") registers this as the POST /predict route
-# response_model=RiskPrediction tells FastAPI to validate and serialise the response
-# Called from patientController.js in the backend whenever a patient is created
-# patient: PatientData triggers automatic request body validation via Pydantic
 @app.post("/predict", response_model=RiskPrediction)
 def predict_risk(patient: PatientData):
 
-    # Returns 503 if model failed to load at startup
     if model is None:
         raise HTTPException(
             status_code=503,
@@ -191,13 +185,17 @@ def predict_risk(patient: PatientData):
         priority_score = calculate_priority_score(probabilities, prediction)
         risk_category = calculate_risk_category(priority_score)
 
-        # Rounds scores to 2dp before returning in response
+        # Pulls the 3 highest-weighted features from the model so the clinician
+        # knows which indicators drove this patient's score.
+        top_factors = get_top_factors(model, n=3)
+
         response = RiskPrediction(
             risk_score=round(priority_score, 2),
             risk_category=risk_category,
             confidence_low=round(probabilities[0] * 100, 2),
             confidence_medium=round(probabilities[1] * 100, 2),
             confidence_high=round(probabilities[2] * 100, 2),
+            top_factors=top_factors,
         )
 
         return response
@@ -212,6 +210,6 @@ if __name__ == "__main__":
     print("Starting Diabetic Patient Priority System ML Model")
     uvicorn.run(app, host="0.0.0.0", port=8001)
 
-#References
-#https://app-generator.dev/docs/technologies/fastapi/machine-learning.html
-#https://dev.to/ekemini_thompson/building-a-real-time-credit-card-fraud-detection-system-with-fastapi-and-machine-learning-3g0m
+# References
+# https://app-generator.dev/docs/technologies/fastapi/machine-learning.html
+# https://dev.to/ekemini_thompson/building-a-real-time-credit-card-fraud-detection-system-with-fastapi-and-machine-learning-3g0m
