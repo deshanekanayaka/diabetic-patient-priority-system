@@ -82,8 +82,6 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         // Sorts patients so highest risk score appears first
         .sort((a, b) => b.risk_score - a.risk_score);
 
-    // Ref: https://www.taniarascia.com/front-end-tables-sort-filter-paginate/
-
     // Minimum of 1 to prevent page snapping to 0 while patients are still loading
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
@@ -124,7 +122,12 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
             <EditPatientModal
                 isOpen={!!editPatient}
                 onClose={() => setEditPatient(null)}
-                onPatientUpdated={() => { setEditPatient(null); onRefresh(); setShowSuccess(true); }}
+                onPatientUpdated={(patientId) => {
+                    setEditPatient(null);
+                    onRefresh();
+                    setSavedId(patientId);
+                    setShowSuccess(true);
+                }}
                 patient={editPatient}
             />
 

@@ -1,6 +1,6 @@
 const axios = require('axios');
 const db = require('../config/database');
-const { patientSchema, patientCreateSchema } = require('../utils/schema.js');
+const { patientSchema, patientCreateSchema, checkWarnings } = require('../utils/schema.js');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
 
@@ -66,6 +66,10 @@ const createPatient = async (req, res) => {
       hba1c, bmi, rbs,
     } = result.data;
 
+    // Checks validated data against clinical warning thresholds.
+    // Warnings are informational — they do not block the record from being saved.
+    const warnings = checkWarnings(result.data);
+
     // Sends the seven key clinical indicators to the ML service to compute a risk score
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
@@ -94,11 +98,12 @@ const createPatient = async (req, res) => {
 
     const dbResult = await db.execute(sql, values);
 
-    // Returns the new patient's ID, risk details, and top factors so the frontend
-    // can display them immediately without a separate fetch
+    // Returns warnings alongside the patient data so the frontend can display
+    // them to the clinician without blocking the successful save
     res.status(201).json({
       success: true,
       message: 'Patient created successfully',
+      warnings,
       data: { patient_id: dbResult.insertId, risk_score, risk_category, top_factors },
     });
 
@@ -216,6 +221,9 @@ const updatePatient = async (req, res) => {
       hba1c, bmi, rbs,
     } = result.data;
 
+    // Checks validated data against clinical warning thresholds
+    const warnings = checkWarnings(result.data);
+
     // Re-scores the patient because any health data change may shift their risk category
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
@@ -246,10 +254,11 @@ const updatePatient = async (req, res) => {
 
     await db.execute(sql, values);
 
-    // Returns the updated risk details so the frontend can refresh the row without a separate fetch
+    // Returns warnings alongside updated risk details so the frontend can display them
     res.status(200).json({
       success: true,
       message: 'Patient updated successfully',
+      warnings,
       data: { patient_id: parseInt(id), risk_score, risk_category, top_factors },
     });
 
@@ -280,7 +289,7 @@ const deletePatient = async (req, res) => {
 
   } catch (error) {
     console.error('Error deleting patient:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to update patient' });
+    res.status(500).json({ success: false, message: 'Failed to delete patient' });
   }
 };
 
