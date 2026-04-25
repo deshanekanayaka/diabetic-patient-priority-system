@@ -65,10 +65,31 @@ const getAnalytics = async (req, res) => {
             [clerk_id]
         );
 
+        // Groups patients by the month they were added and averages their risk scores.
+        // This shows whether the overall risk of the clinician's patient cohort is
+        // rising or falling over time — the health trend line chart.
+        const riskTrend = await query(
+            `SELECT
+                DATE_FORMAT(created_at, '%Y-%m') AS month,
+                ROUND(AVG(risk_score), 1)         AS avg_risk_score,
+                COUNT(*)                           AS patient_count
+            FROM patients
+            WHERE clerk_id = ?
+              AND risk_score IS NOT NULL
+            GROUP BY month
+            ORDER BY month ASC`,
+            [clerk_id]
+        );
+
         // MySQL returns COUNT(*) as a string. Cast to Number so chart libraries receive numeric values
         res.json({
             ageDistribution: ageDistribution.map(r => ({ ...r, count: Number(r.count) })),
             riskScoreDistribution: riskScoreDistribution.map(r => ({ ...r, count: Number(r.count) })),
+            riskTrend: riskTrend.map(r => ({
+                month: r.month,
+                avg_risk_score: Number(r.avg_risk_score),
+                patient_count: Number(r.patient_count),
+            })),
         });
 
     } catch (error) {
