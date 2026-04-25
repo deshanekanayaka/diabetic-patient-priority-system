@@ -51,7 +51,7 @@ const EditPatientModal = ({ isOpen, onClose, onPatientUpdated, patient }) => {
             }
 
             // Notifies the parent to refresh the patient list, then closes the modal
-            onPatientUpdated();
+            onPatientUpdated(patient.patient_id);
             handleClose();
 
         } catch (err) {
