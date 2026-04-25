@@ -1,10 +1,12 @@
 import React from 'react';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Tooltip,
   Legend,
 } from 'chart.js';
@@ -13,7 +15,7 @@ import useAnalytics from '../utils/useAnalytics.js';
 import '../css/index.css';
 import '../css/Analytics.css';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
 // Bucket labels for age groups and risk score bands
 const AGE_LABELS = ['20-29', '30-39', '40-49', '50-59', '60-69', '70+'];
@@ -85,6 +87,40 @@ const histogramOptions = {
   },
 };
 
+// Options for the risk trend line chart
+const trendOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      titleColor: '#f1f5f9',
+      bodyColor: '#94a3b8',
+      padding: 10,
+      callbacks: {
+        // Shows the average risk score and how many patients that month
+        label: (ctx) => ` Avg Risk Score: ${ctx.parsed.y}`,
+      },
+    },
+  },
+  scales: {
+    x: {
+      ticks: { color: '#1e293b' },
+      grid: { color: 'rgba(148,163,184,0.1)' },
+      title: { display: true, text: 'Month', color: '#1e293b', font: { size: 12 } },
+    },
+    y: {
+      beginAtZero: false,
+      min: 0,
+      max: 100,
+      ticks: { color: '#1e293b', precision: 1 },
+      grid: { color: 'rgba(148,163,184,0.1)' },
+      title: { display: true, text: 'Average Risk Score', color: '#1e293b', font: { size: 12 } },
+    },
+  },
+};
+
 // Builds grouped bar chart data split by high/medium/low risk per age group
 const buildAgeChartData = (rows) => {
   // Looks up count for a given risk level and age group from the flat rows array
@@ -151,7 +187,27 @@ const buildHistogramData = (rows) => {
   };
 };
 
-// Renders the Analytics page with two charts: age distribution and risk score histogram
+// Builds line chart data from monthly average risk scores.
+// Each point on the line is one month's average across all the clinician's patients.
+const buildTrendChartData = (rows) => {
+  return {
+    labels: rows.map((r) => r.month),
+    datasets: [
+      {
+        label: 'Avg Risk Score',
+        data: rows.map((r) => r.avg_risk_score),
+        borderColor: '#3B82F6',
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        pointBackgroundColor: '#3B82F6',
+        pointRadius: 5,
+        tension: 0.3,
+        fill: true,
+      },
+    ],
+  };
+};
+
+// Renders the Analytics page with three charts: age distribution, risk score histogram, and risk trend
 const Analytics = () => {
   const { data, loading, error } = useAnalytics();
 
@@ -182,6 +238,8 @@ const Analytics = () => {
 
   const ageChartData       = buildAgeChartData(data.ageDistribution);
   const histogramChartData = buildHistogramData(data.riskScoreDistribution);
+  // Falls back to empty array if riskTrend is missing so the chart renders gracefully
+  const trendChartData     = buildTrendChartData(data.riskTrend || []);
 
   return (
       <div className="analytics-page">
@@ -206,6 +264,16 @@ const Analytics = () => {
               </div>
               <div className="chart-content" style={{ height: '300px' }}>
                 <Bar data={histogramChartData} options={histogramOptions} />
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div className="chart-card-header">
+                <h2 className="chart-title">Average Risk Score Trend</h2>
+                <p className="chart-subtitle">Monthly average risk score across all patients</p>
+              </div>
+              <div className="chart-content" style={{ height: '300px' }}>
+                <Line data={trendChartData} options={trendOptions} />
               </div>
             </div>
 

@@ -1,16 +1,11 @@
--- schema.sql
--- Run this to reset the database for Option B (Clerk auth, no clinicians table)
--- WARNING: drops and recreates the patients table
-
 USE diabetic_db;
 
 DROP TABLE IF EXISTS patients;
--- clinicians table is no longer needed — Clerk manages identity
 DROP TABLE IF EXISTS clinicians;
 
 CREATE TABLE patients (
                           patient_id    INT PRIMARY KEY AUTO_INCREMENT,
-                          clerk_id      VARCHAR(100) NOT NULL,        -- Clerk user ID e.g. "user_2abc123"
+                          clerk_id      VARCHAR(100) NOT NULL,
                           age           INT NOT NULL,
                           sex           VARCHAR(10) NOT NULL,
                           social_life   VARCHAR(10) NOT NULL,
@@ -26,10 +21,12 @@ CREATE TABLE patients (
                           rbs           DECIMAL(6,2) NOT NULL,
                           risk_score    DECIMAL(5,2),
                           risk_category VARCHAR(10),
+    -- Stores the 3 clinical factors that contributed most to the risk score,
+    -- serialised as JSON so they can be read back as an array on the frontend.
+                          top_factors   JSON,
                           created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for fast clinician lookups
 CREATE INDEX idx_clerk_id ON patients (clerk_id);
 
 SHOW TABLES;

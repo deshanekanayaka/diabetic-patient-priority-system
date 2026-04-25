@@ -13,6 +13,19 @@ const RiskBadge = ({ level = '' }) => (
     <span className={`risk-badge ${level.toLowerCase()}`}>{level || '—'}</span>
 );
 
+// Renders each top factor as a small coloured tag.
+// Defined outside the component so it isn't recreated on every render.
+const FactorTags = ({ factors }) => {
+    if (!Array.isArray(factors) || factors.length === 0) return <span>—</span>;
+    return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {factors.map((factor) => (
+                <span key={factor} className="factor-tag">{factor}</span>
+            ))}
+        </div>
+    );
+};
+
 // Receives patients/loading/error from Dashboard and calls onRefresh
 // after any mutation so Dashboard re-fetches and StatCards + table both update
 const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
@@ -27,8 +40,6 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
     // Holds the patient object pending deletion, or null when no delete is in progress
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting,     setDeleting]     = useState(false);
-    // Reserved for future bulk-action feature
-    const [selected,     setSelected]     = useState(new Set());
     const [showSuccess,  setShowSuccess]  = useState(false);
     // Stores the ID of the most recently saved patient to display in the success modal
     const [savedId,      setSavedId]      = useState(null);
@@ -50,21 +61,6 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
             setDeleting(false);
         }
     };
-
-    // Toggles a single row's selected state without mutating the previous Set
-    const toggleOne = (id) =>
-        setSelected((prev) => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-
-    // Selects all visible rows if any are unchecked, otherwise clears all selections
-    const toggleAll = (visibleIds) =>
-        setSelected((prev) => {
-            const allChecked = visibleIds.every((id) => prev.has(id));
-            return allChecked ? new Set() : new Set([...prev, ...visibleIds]);
-        });
 
     // Remove leading "p" from search input so "p8" and "8" both work
     const searchTerm = searchId.trim().replace(/^p/i, '');
@@ -94,9 +90,6 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
     // Slice the filtered array to get only the rows for the current page
     // e.g. page 2 with pageSize 10 → slice(10, 20)
     const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-    // Get IDs of rows on current page — used for the select all checkbox
-    const pageIds = pageRows.map((patient) => patient.patient_id);
 
     // Calculate the row range to display e.g. "Showing 1-10 of 43"
     const beginning = page === 1 ? 1 : pageSize * (page - 1) + 1;
@@ -234,18 +227,12 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                         <table>
                             <thead>
                             <tr className="column-headers">
-                                <th className="col-batch-checkbox">
-                                    {/* Header checkbox checks/unchecks all rows on the current page */}
-                                    <input
-                                        type="checkbox"
-                                        checked={pageIds.length > 0 && pageIds.every((id) => selected.has(id))}
-                                        onChange={() => toggleAll(pageIds)}
-                                    />
-                                </th>
                                 <th className="col-patient-id">Patient ID</th>
                                 <th className="col-age">Age</th>
                                 <th className="col-score">Score</th>
                                 <th className="col-risk">Risk</th>
+                                {/* Shows the clinical factors the model weighted most for each patient */}
+                                <th className="col-factors">Key Factors</th>
                                 <th className="col-sex">Sex</th>
                                 <th className="col-social">Social Life</th>
                                 <th className="col-systolic">Systolic</th>
@@ -271,14 +258,6 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                                 </tr>
                             ) : pageRows.map((p) => (
                                 <tr key={p.patient_id}>
-                                    <td>
-                                        <input
-                                            type="checkbox"
-                                            checked={selected.has(p.patient_id)}
-                                            onChange={() => toggleOne(p.patient_id)}
-                                        />
-                                    </td>
-                                    {/* Prefixes the ID with "p" to match the project's patient ID format */}
                                     <td className="patient-id">p{p.patient_id}</td>
                                     <td className="text-center">{p.age}</td>
                                     {/* Shows one decimal place for the score, or a dash if not yet scored */}
@@ -286,6 +265,8 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                                         {p.risk_score != null ? Number(p.risk_score).toFixed(1) : '—'}
                                     </td>
                                     <td><RiskBadge level={p.risk_category} /></td>
+                                    {/* Renders the top contributing clinical factors as coloured tags */}
+                                    <td><FactorTags factors={p.top_factors} /></td>
                                     <td style={{ textTransform: 'capitalize' }}>{p.sex}</td>
                                     <td style={{ textTransform: 'capitalize' }}>{p.social_life}</td>
                                     <td className="text-center">{p.bp_systolic}</td>
@@ -356,4 +337,4 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
 export default PriorityTable;
 
 // References
-//https://www.taniarascia.com/front-end-tables-sort-filter-paginate/
+// https://www.taniarascia.com/front-end-tables-sort-filter-paginate/
