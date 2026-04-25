@@ -70,31 +70,36 @@ const createPatient = async (req, res) => {
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
     });
-    const { risk_score, risk_category } = mlResponse.data;
+
+    // top_factors is the ranked list of clinical features that drove this score,
+    // serialised to JSON string so MySQL can store it in the JSON column
+    const { risk_score, risk_category, top_factors } = mlResponse.data;
+    const top_factors_json = JSON.stringify(top_factors);
 
     const sql = `
       INSERT INTO patients
         (clerk_id, age, sex, social_life,
          cholesterol, triglycerides, hdl, ldl, vldl,
          bp_systolic, bp_diastolic, hba1c, bmi, rbs,
-         risk_score, risk_category)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         risk_score, risk_category, top_factors)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       clerk_id, age, sex, social_life,
       cholesterol, triglycerides, hdl, ldl, vldl,
       bp_systolic, bp_diastolic, hba1c, bmi, rbs,
-      risk_score, risk_category,
+      risk_score, risk_category, top_factors_json,
     ];
 
     const dbResult = await db.execute(sql, values);
 
-    // Returns the new patient's ID and ML-assigned risk so the frontend can display them immediately
+    // Returns the new patient's ID, risk details, and top factors so the frontend
+    // can display them immediately without a separate fetch
     res.status(201).json({
       success: true,
       message: 'Patient created successfully',
-      data: { patient_id: dbResult.insertId, risk_score, risk_category },
+      data: { patient_id: dbResult.insertId, risk_score, risk_category, top_factors },
     });
 
   } catch (error) {
@@ -127,7 +132,14 @@ const getAllPatients = async (req, res) => {
 
     const patients = await db.query(sql, values);
 
-    res.status(200).json({ success: true, count: patients.length, data: patients });
+    // MySQL returns JSON columns as strings — parse them back into arrays
+    // so the frontend receives top_factors as ["HbA1c", "Age", "BMI"] not a raw string
+    const parsed = patients.map((p) => ({
+      ...p,
+      top_factors: typeof p.top_factors === 'string' ? JSON.parse(p.top_factors) : p.top_factors,
+    }));
+
+    res.status(200).json({ success: true, count: parsed.length, data: parsed });
 
   } catch (error) {
     console.error('Error fetching patients:', error.message);
@@ -147,6 +159,11 @@ const getPatientById = async (req, res) => {
     if (!patient) {
       return res.status(404).json({ success: false, message: 'Patient not found' });
     }
+
+    // Parses top_factors from JSON string back to array before sending to frontend
+    patient.top_factors = typeof patient.top_factors === 'string'
+        ? JSON.parse(patient.top_factors)
+        : patient.top_factors;
 
     res.status(200).json({ success: true, data: patient });
 
@@ -203,7 +220,10 @@ const updatePatient = async (req, res) => {
     const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
       age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
     });
-    const { risk_score, risk_category } = mlResponse.data;
+
+    // Extracts all three ML outputs including the refreshed top_factors for this patient
+    const { risk_score, risk_category, top_factors } = mlResponse.data;
+    const top_factors_json = JSON.stringify(top_factors);
 
     const sql = `
       UPDATE patients SET
@@ -211,7 +231,7 @@ const updatePatient = async (req, res) => {
         cholesterol=?, triglycerides=?, hdl=?, ldl=?, vldl=?,
         bp_systolic=?, bp_diastolic=?,
         hba1c=?, bmi=?, rbs=?,
-        risk_score=?, risk_category=?
+        risk_score=?, risk_category=?, top_factors=?
       WHERE patient_id=?
     `;
 
@@ -220,7 +240,7 @@ const updatePatient = async (req, res) => {
       cholesterol, triglycerides, hdl, ldl, vldl,
       bp_systolic, bp_diastolic,
       hba1c, bmi, rbs,
-      risk_score, risk_category,
+      risk_score, risk_category, top_factors_json,
       id,
     ];
 
@@ -230,7 +250,7 @@ const updatePatient = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Patient updated successfully',
-      data: { patient_id: parseInt(id), risk_score, risk_category },
+      data: { patient_id: parseInt(id), risk_score, risk_category, top_factors },
     });
 
   } catch (error) {
@@ -260,7 +280,7 @@ const deletePatient = async (req, res) => {
 
   } catch (error) {
     console.error('Error deleting patient:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to delete patient' });
+    res.status(500).json({ success: false, message: 'Failed to update patient' });
   }
 };
 
