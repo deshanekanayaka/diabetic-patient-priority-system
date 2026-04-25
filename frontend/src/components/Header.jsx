@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserButton, useUser } from '@clerk/clerk-react';
+import '../css/index.css';
+import '../css/Header.css';
 
 const Header = () => {
     // Used to determine which nav link should be marked as active
@@ -14,8 +16,17 @@ const Header = () => {
 
     return (
         <div className="header">
+
             <div className="header-left">
-                <div className="header-title">Diabetic Patient Priority System</div>
+                <div className="header-logo">
+                    <div className="header-logo-icon">
+                        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                            <rect x="6.5" y="1" width="5" height="16" rx="2" fill="white" />
+                            <rect x="1" y="6.5" width="16" height="5" rx="2" fill="white" />
+                        </svg>
+                    </div>
+                    <span className="header-logo-wordmark">Diabetic Patient Priority System</span>
+                </div>
             </div>
 
             <nav className="header-nav">
