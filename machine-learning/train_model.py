@@ -11,11 +11,9 @@ def load_and_preprocess_data(csv_path):
     """
     Loads and prepares the diabetes dataset.
     """
-    # Load data
     df = pd.read_csv(csv_path)
     print(f"Loaded {len(df)} patient records")
 
-    # Basic cleaning
     # Removes unnamed index column and FBS column from the dataframe
     df = df.drop(columns=["Unnamed: 0", "FBS"])
 
@@ -33,7 +31,8 @@ def load_and_preprocess_data(csv_path):
 
     # Fills missing values in each column with that column's median
     for col in ["Age", "BP_Systolic", "BP_Diastolic", "BMI", "RBS"]:
-        df[col] = df[col].fillna(df[col].median())
+          df[col] = pd.to_numeric(df[col], errors="coerce")
+          df[col] = df[col].fillna(df[col].median())
 
     # Encodes Sex as binary numeric (MALE=1, FEMALE=0) for model input
     df["Sex_Encoded"] = df["Sex"].map({"MALE": 1, "FEMALE": 0})
@@ -106,7 +105,9 @@ def calculate_risk_level(row):
 def prepare_features(df):
     print()
     print("Preparing features")
-        # Selected seven clinical features used as model inputs    feature_columns = [
+
+    # Seven clinical features selected as model inputs
+    feature_columns = [
         "HbA1c",
         "Age",
         "Sex_Encoded",
@@ -150,7 +151,7 @@ def fit_and_evaluate_model(
     random_forest = RandomForestClassifier(
         random_state=0,
         max_depth=max_depth,
-        min_samples_split=min_samples_split,  # Float = fraction of total samples required to split a node
+        min_samples_split=min_samples_split,
         max_features=max_features,
         max_samples=max_samples,
     )
@@ -171,7 +172,6 @@ def fit_and_evaluate_model(
 def hyperparameter_tuning(x_train, y_train):
     print()
     print("HYPERPARAMETER TUNING WITH GRIDSEARCH CV")
-    # Defines all parameter combinations to search — 256 total combinations
     param_grid = [
         {
             "max_depth": [3, 5, 7, 10],
@@ -189,7 +189,7 @@ def hyperparameter_tuning(x_train, y_train):
     print()
 
     model = RandomForestClassifier()
-    #3-fold cross-validation to keep search time manageable across all combinations
+    # 3-fold cross-validation to keep search time manageable across all combinations
     search = GridSearchCV(estimator=model, param_grid=param_grid, cv=3, verbose=1)
     search.fit(x_train, y_train)
 
@@ -259,17 +259,25 @@ def feature_importance_analysis(model, feature_columns):
 
     return feature_importance
 
-def save_model(model, output_path="models/random_forest_model.pkl"):
+def save_model(model, feature_columns, output_path="models/random_forest_model.pkl"):
     print()
     print("SAVING MODEL")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+    # Saves model and feature names together so app.py can load both from one file.
+    # feature_names travel with the model — if features change on retrain,
+    # the labels in app.py update automatically without any manual edits.
+    model_package = {
+        "model": model,
+        "feature_names": feature_columns,
+    }
+
     with open(output_path, "wb") as f:
-        pickle.dump(model, f)
+        pickle.dump(model_package, f)
 
     file_size = os.path.getsize(output_path) / 1024
-    print(f"Model saved to: {output_path}")
+    print(f"Model saved to: {output_path} ({file_size:.1f} KB)")
 
 def main():
     print()
@@ -282,27 +290,17 @@ def main():
         print(f"Error: Dataset not found at {CSV_PATH}")
         return
 
-    #Load and preprocess
     df = load_and_preprocess_data(CSV_PATH)
-
-    #Prepare features
     x, y, feature_columns = prepare_features(df)
-
-    #Split data
     x_train, x_test, y_train, y_test = split_data(x, y)
 
-    #Train baseline model
     print()
     print("TRAINING BASELINE MODEL")
     model = fit_and_evaluate_model(x_train, x_test, y_train, y_test)
 
-    #Hyperparameter tuning
     search = hyperparameter_tuning(x_train, y_train)
-
-    #Analyze results
     results = analyze_results(search)
 
-    #Evaluate best model on test set
     print()
     print("EVALUATING BEST MODEL ON TEST SET")
     best_model = search.best_estimator_
@@ -319,29 +317,22 @@ def main():
     print()
     print(classification_report(y_test, y_pred_best))
 
-    #K-Fold Cross-Validation
     cv_scores = k_fold_validation(best_model, x, y)
-
-    #Feature importance
     feature_importance = feature_importance_analysis(best_model, feature_columns)
 
-    #Save model
-    save_model(best_model)
+    # Passes feature_columns alongside the model so both are stored in the same pkl file
+    save_model(best_model, feature_columns)
 
-    # Final summary
     print()
     print(f"  Test Set Accuracy: {best_accuracy*100:.2f}%")
-    print(
-        f"  Cross-Validation Accuracy: {cv_scores.mean()*100:.2f}% (±{cv_scores.std()*100:.2f}%)"
-    )
+    print(f"  Cross-Validation Accuracy: {cv_scores.mean()*100:.2f}% (±{cv_scores.std()*100:.2f}%)")
     print("Run: uvicorn app:app --reload --port 8001")
     print()
 
 if __name__ == "__main__":
     main()
 
-
-#References
-#https://stackoverflow.com/questions/14745022/how-to-split-a-dataframe-string-column-into-two-columns
-#https://www.digitalocean.com/community/tutorials/k-fold-cross-validation-python
-#https://www.geeksforgeeks.org/machine-learning/feature-importance-with-random-forests/
+# References
+# https://stackoverflow.com/questions/14745022/how-to-split-a-dataframe-string-column-into-two-columns
+# https://www.digitalocean.com/community/tutorials/k-fold-cross-validation-python
+# https://www.geeksforgeeks.org/machine-learning/feature-importance-with-random-forests/
