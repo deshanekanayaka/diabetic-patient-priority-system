@@ -5,7 +5,7 @@
 **For developers:** A full-stack system built with React, Node.js, MySQL, and a Python Random Forest classifier that scores patients across 13 clinical indicators on a 0–100 risk scale.
 
 ## Preview
-![Diabetic Risk Classification Dashboard](./assets/dashboard-preview.png)
+![Diabetic Risk Classification Dashboard](./assets/dashboard.png)
 ![Diabetic Risk Classification Analytics](./assets/analytics.png)
 ---
 
