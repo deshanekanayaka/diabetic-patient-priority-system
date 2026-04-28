@@ -7,12 +7,15 @@ const API_BASE = import.meta.env.VITE_API_URL;
 const useAnalytics = () => {
     const { user } = useUser();
 
-    // Initialised with empty arrays so charts render without crashing before data arrives
+    // Initialised with empty arrays matching the API response shape —
+    // charts render safely before data arrives without crashing on undefined
     const [data, setData] = useState({
         ageDistribution: [],
-        avgScoreByAge: [],
+        riskScoreDistribution: [],
+        riskTrend: [],
     });
-    // Starts as true so the loading state is correct before the first effect runs
+
+    // Starts as true so the loading state is correct before the first fetch runs
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -30,12 +33,17 @@ const useAnalytics = () => {
                     `${API_BASE}/api/analytics?clerk_id=${user.id}`,
                     { signal: controller.signal }
                 );
-                // Treats non-2xx HTTP responses as errors since fetch doesn't throw on them
+
+                // fetch does not automatically fail on error responses like axios does,
+                // so without this check a 404 or 500 would be treated as success
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
                 const json = await res.json();
                 setData(json);
+
             } catch (err) {
-                // Ignores cancellation errors triggered by the cleanup function
+
+                // If the page was closed mid-fetch, warn.
                 if (err.name !== 'AbortError') {
                     setError(err.message);
                 }

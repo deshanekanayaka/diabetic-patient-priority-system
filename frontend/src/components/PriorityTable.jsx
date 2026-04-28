@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import AddPatientModal from './AddPatientModal';
 import EditPatientModal from './EditPatientModal';
@@ -40,6 +40,8 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
     // Holds the patient object pending deletion, or null when no delete is in progress
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting,     setDeleting]     = useState(false);
+    // Holds an inline error message if the delete request fails
+    const [deleteError,  setDeleteError]  = useState(null);
     const [showSuccess,  setShowSuccess]  = useState(false);
     // Stores the ID of the most recently saved patient to display in the success modal
     const [savedId,      setSavedId]      = useState(null);
@@ -49,6 +51,7 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
         if (!deleteTarget) return;
         try {
             setDeleting(true);
+            setDeleteError(null);
             const res = await axios.delete(`${BASE_URL}/api/patients/${deleteTarget.patient_id}`);
             // axios only throws on network errors — a failed response must be handled manually
             if (!res.data.success) throw new Error(res.data.message);
@@ -56,38 +59,45 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
             // Refreshes the patient list in the parent after a successful delete
             onRefresh();
         } catch (err) {
-            alert('Delete failed: ' + err.message);
+            // Shows the error inside the modal instead of a disruptive browser alert
+            setDeleteError('Delete failed: ' + err.message);
         } finally {
             setDeleting(false);
         }
     };
 
-    // Remove leading "p" from search input so "p8" and "8" both work
+    // Strips leading "p" from search input so "p8" and "8" both match patient 8
     const searchTerm = searchId.trim().replace(/^p/i, '');
 
-    const filtered = patients
-        .filter((patient) => {
-            // If there is a search term, only keep patients whose ID matches exactly
-            if (searchTerm) {
-                const patientId = String(patient.patient_id);
-                if (patientId !== searchTerm) return false;
-            }
-            // If a risk filter is selected, only keep patients that match that risk level
-            if (riskFilter !== 'all') {
-                const patientRisk = (patient.risk_category || '').toLowerCase();
-                if (patientRisk !== riskFilter) return false;
-            }
-            return true;
-        })
-        // Sorts patients so highest risk score appears first
-        .sort((a, b) => b.risk_score - a.risk_score);
+    // Only recalculates when patients, searchTerm, or riskFilter changes — not on every render
+    const filtered = useMemo(() => {
+        return patients
+            .filter((patient) => {
+                // If there is a search term, only keep patients whose ID matches exactly
+                if (searchTerm) {
+                    const patientId = String(patient.patient_id);
+                    if (patientId !== searchTerm) return false;
+                }
+                // If a risk filter is selected, only keep patients that match that risk level
+                if (riskFilter !== 'all') {
+                    const patientRisk = (patient.risk_category || '').toLowerCase();
+                    if (patientRisk !== riskFilter) return false;
+                }
+                return true;
+            })
+            // Sorts patients so highest risk score appears first
+            .sort((a, b) => b.risk_score - a.risk_score);
+    }, [patients, searchTerm, riskFilter]);
 
     // Minimum of 1 to prevent page snapping to 0 while patients are still loading
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
-    // Slice the filtered array to get only the rows for the current page
-    // e.g. page 2 with pageSize 10 → slice(10, 20)
-    const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+    // Only recalculates when filtered list, page, or pageSize changes
+    const pageRows = useMemo(() => {
+        // Slice the filtered array to get only the rows for the current page
+        // e.g. page 2 with pageSize 10 → slice(10, 20)
+        return filtered.slice((page - 1) * pageSize, page * pageSize);
+    }, [filtered, page, pageSize]);
 
     // Calculate the row range to display e.g. "Showing 1-10 of 43"
     const beginning = page === 1 ? 1 : pageSize * (page - 1) + 1;
@@ -167,6 +177,12 @@ const PriorityTable = ({ patients = [], loading, error, onRefresh }) => {
                             Are you sure you want to delete <strong>p{deleteTarget.patient_id}</strong>?
                         </p>
                         <p className="delete-confirm-sub">This action cannot be undone.</p>
+
+                        {/* Inline error — shown inside the modal instead of a browser alert */}
+                        {deleteError && (
+                            <div className="modal-error-banner">{deleteError}</div>
+                        )}
+
                         <div className="modal-footer">
                             <button className="btn-modal-cancel" onClick={() => setDeleteTarget(null)}>Cancel</button>
                             {/* Disables the button while the delete request is in flight */}

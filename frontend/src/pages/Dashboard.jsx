@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import axios from 'axios';
 import Header from '../components/Header';
 import StatCards from '../components/StatCards';
@@ -44,15 +44,19 @@ const Dashboard = ({ clerkId }) => {
     // Runs fetchPatients on mount and whenever clerkId changes
     useEffect(() => { fetchPatients(); }, [fetchPatients]);
 
-    // Counts how many patients fall into each risk category
-    // derived from the patients array so StatCards always stays in sync with the table
-    const counts = { high: 0, medium: 0, low: 0 };
-    patients.forEach((patient) => {
-        const riskLevel = (patient.risk_category || '').toLowerCase();
-        if (riskLevel === 'high')   counts.high++;
-        if (riskLevel === 'medium') counts.medium++;
-        if (riskLevel === 'low')    counts.low++;
-    });
+    //Only recalculates when the patients array actually changes. Or the loop would run
+    // on every re-render
+    const counts = useMemo(() => {
+
+        const result = { high: 0, medium: 0, low: 0 };
+        patients.forEach((patient) => {
+            const riskLevel = (patient.risk_category || '').toLowerCase();
+            if (riskLevel === 'high')   result.high++;
+            if (riskLevel === 'medium') result.medium++;
+            if (riskLevel === 'low')    result.low++;
+        });
+        return result;
+    }, [patients]);
 
     return (
         <div className="app">
