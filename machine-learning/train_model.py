@@ -116,8 +116,8 @@ def prepare_features(df):
         "BMI",
         "RBS",
     ]
-    x = df[feature_columns]
-    y = df["Risk_Category"]
+    x = df[feature_columns] #features the model sees
+    y = df["Risk_Category"] #what the model predicts
 
     print(f"Features: {feature_columns}")
     print(f"Feature matrix shape: {x.shape}")
@@ -128,6 +128,7 @@ def split_data(x, y):
     print()
     print("Splitting Data")
 
+    #Stratify ensures each risk class is proportionally represented in both train and test sets.
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -150,7 +151,7 @@ def fit_and_evaluate_model(
     # Initialises Random Forest with specified hyperparameters
     random_forest = RandomForestClassifier(
         random_state=0,
-        max_depth=max_depth,
+        max_depth=max_depth, #limits how deep each tree grows. Prevents memorising training data.
         min_samples_split=min_samples_split,
         max_features=max_features,
         max_samples=max_samples,
@@ -250,7 +251,7 @@ def feature_importance_analysis(model, feature_columns):
 
     feature_importance = pd.DataFrame(
         {"feature": feature_columns, "importance": model.feature_importances_}
-    ).sort_values("importance", ascending=False)
+    ).sort_values("importance", ascending=False) #ascending=False so most important feature first
 
     print()
     print("Features Ranked by Importance:")
