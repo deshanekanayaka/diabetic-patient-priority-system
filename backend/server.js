@@ -5,7 +5,6 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./config/database');
 
-const authRoutes = require('./routes/auth');
 const patientRoutes = require('./routes/patients');
 const analyticsRouter = require('./routes/analytics');
 
@@ -44,7 +43,6 @@ app.get('/', (req, res) => {
 });
 
 // Mounts route handlers at their respective base paths
-app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/analytics', analyticsRouter);
 
@@ -85,8 +83,6 @@ async function startServer() {
       console.log('------------------------------------------');
       console.log('Available Endpoints:');
       console.log(`  GET  http://localhost:${PORT}/`);
-      console.log(`  POST http://localhost:${PORT}/api/auth/signup`);
-      console.log(`  POST http://localhost:${PORT}/api/auth/login`);
       console.log(`  GET  http://localhost:${PORT}/api/patients`);
       console.log('==========================================\n');
     });
