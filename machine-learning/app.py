@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-from typing import Optional
 
 app = FastAPI(
     title="Diabetic Patient Priority System API",
@@ -42,12 +41,14 @@ except FileNotFoundError:
 class PatientData(BaseModel):
     age: int = Field(..., ge=0, le=120, description="Patient age in years")
     sex: str = Field(..., description="Patient sex: 'male' or 'female'")
-    hba1c: Optional[float] = Field(None, ge=0, le=20, description="HbA1c percentage")
-    bmi: Optional[float] = Field(None, ge=0, le=60, description="BMI")
-    bp_systolic: Optional[float] = Field(None, ge=5, le=25, description="Systolic BP (dataset format e.g. 12.0 = 120mmHg)")
-    bp_diastolic: Optional[float] = Field(None, ge=3, le=15, description="Diastolic BP (dataset format e.g. 8.0 = 80mmHg)")
-    rbs: Optional[float] = Field(None, ge=0, le=600, description="Random Blood Sugar")
+    hba1c: float = Field(..., ge=0, le=20, description="HbA1c percentage")
+    bmi: float = Field(..., ge=0, le=60, description="BMI")
+    bp_systolic: float = Field(..., ge=5, le=25, description="Systolic BP (dataset format e.g. 12.0 = 120mmHg)")
+    bp_diastolic: float = Field(..., ge=3, le=15, description="Diastolic BP (dataset format e.g. 8.0 = 80mmHg)")
+    rbs: float = Field(..., ge=0, le=600, description="Random Blood Sugar")
 
+    # Accepts any capitalisation ("MALE", "Male") only, but stores as lowercase
+    # so the encoding step (1 if x == "male" else 0) always matches correctly.
     @field_validator("sex")
     @classmethod
     def validate_sex(cls, v):
@@ -74,13 +75,6 @@ def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
     # Encodes sex as binary numeric to match training format (male=1, female=0)
     df["Sex_Encoded"] = df["sex"].apply(lambda x: 1 if x == "male" else 0)
 
-    # Fills missing clinical values with clinically appropriate defaults
-    df["hba1c"] = df["hba1c"].fillna(5.7)
-    df["bmi"] = df["bmi"].fillna(25.0)
-    df["bp_systolic"] = df["bp_systolic"].fillna(12.0)
-    df["bp_diastolic"] = df["bp_diastolic"].fillna(8.0)
-    df["rbs"] = df["rbs"].fillna(120.0)
-
     # Renames columns to exactly match feature names used during training
     df = df.rename(
         columns={
@@ -93,7 +87,8 @@ def preprocess_patient_data(data: PatientData) -> pd.DataFrame:
         }
     )
 
-    # Selects only the 7 features the model was trained on, in the same order
+    # Selects only the 7 features the model was trained on, in the same order.
+    # Order matters — model.predict() maps columns positionally.
     feature_columns = [
         "HbA1c",
         "Age",
@@ -112,6 +107,9 @@ def calculate_priority_score(probabilities: np.ndarray, predicted_class: int) ->
     prob_medium = probabilities[1]
     prob_high = probabilities[2]
 
+    # Maps each predicted class to a fixed band, then uses confidence probability
+    # to position the patient within that band for within-tier ranking.
+    # High:   70-100 | Medium: 40-70 | Low: 0-40
     if predicted_class == 2:
         priority_score = 70 + (prob_high * 30)
     elif predicted_class == 1:
@@ -136,7 +134,7 @@ def calculate_risk_category(priority_score: float) -> str:
 # label for each index from FEATURE_LABELS — which came from the model package itself.
 def get_top_factors(model, n: int = 3) -> list[str]:
 
-    # Build a small dataframe with feature names and their importance scores
+    # Build a small dataframe pairing feature names with their importance weights
     importance_df = pd.DataFrame({
         'feature': FEATURE_LABELS,
         'importance': model.feature_importances_
@@ -167,6 +165,7 @@ def read_root():
 @app.post("/predict", response_model=RiskPrediction)
 def predict_risk(patient: PatientData):
 
+    # 503 = Service Unavailable — server is up but model is not ready
     if model is None:
         raise HTTPException(
             status_code=503,
