@@ -47,18 +47,15 @@ const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, savin
     // null means no save is currently pending confirmation.
     const [pendingData, setPendingData] = useState(null);
 
-    const {
-        register,
-        handleSubmit,
-        reset,
-        formState: { errors },
-    } = useForm({
-        resolver: zodResolver(patientSchema),
+    // Wires up Zod validation, blank defaults, and field-level error timing
+    const { register, handleSubmit, reset, formState: { errors } } = useForm({
+        resolver: zodResolver(patientSchema), // runs patientSchema on submit
         defaultValues: EMPTY_FORM,
-        mode: 'onBlur',
-        reValidateMode: 'onChange',
+        mode: 'onBlur',          // validates when clinician leaves a field
+        reValidateMode: 'onChange', // clears error as soon as value becomes valid
     });
 
+    // Resets the form and clears leftover state every time the modal opens
     useEffect(() => {
         if (isOpen) {
             reset(initialValues ?? EMPTY_FORM);
@@ -69,17 +66,20 @@ const PatientFormModal = ({ isOpen, onClose, title, initialValues, onSave, savin
 
     if (!isOpen) return null;
 
+    // Runs after Zod passes — checks clinical thresholds and either saves immediately
+    // or pauses and highlights unusual fields for the clinician to review
     const onSubmit = (data) => {
         const activeWarnings = checkWarnings(data);
 
         //Checks if any warnings were returned
         if (Object.keys(activeWarnings).length > 0) {
-            // Unusual values found — highlight the fields and pause the save.
-            // The clinician must click Save Anyway or Go Back.
+
+            // highlight the fields and pause the save.
             setWarnings(activeWarnings);
             setPendingData(data);
+
         } else {
-            // All values are within normal range — save immediately
+            // All values are within normal range
             onSave(data);
         }
     };
