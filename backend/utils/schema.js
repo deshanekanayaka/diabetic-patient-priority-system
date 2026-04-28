@@ -1,10 +1,18 @@
 const { z } = require('zod');
 
+// Zod validator for any numeric clinical field.
+// Called once per field with its allowed range
 const requiredNumber = (min, max, minMsg, maxMsg) =>
     z.preprocess(
         (val) => {
+            // Empty, null, or missing fields return 'MISSING' — a string Zod's z.number()
+            // rejects with invalid_type_error: 'This field is required'
             if (val === undefined || val === null || val === '') return 'MISSING';
+
+            // Converts string inputs to numbers (e.g. form sends "45", model needs 45)
             const num = Number(val);
+
+            // // If conversion fails (e.g. "abc"), treat it the same as missing
             return isNaN(num) ? 'MISSING' : num;
         },
         z.number({
@@ -36,22 +44,27 @@ const patientCreateSchema = patientSchema.extend({
 });
 
 // Warning thresholds based on clinical guidelines.
-// These do not block submission — they alert the clinician to unusual but valid values.
-// Sources: ADA Standards of Care, Diabetes UK, WHO BMI Classification, NICE Lipid Guidelines
 const checkWarnings = (data) => {
     const warnings = {};
 
-    if (data.hba1c >= 6.5) warnings.hba1c = 'Diabetic range';
-    if (data.hba1c < 4.0)  warnings.hba1c = 'Unusually low';
-    if (data.bmi >= 30)    warnings.bmi   = 'Obese';
-    if (data.bmi < 18.5)   warnings.bmi   = 'Underweight';
-    if (data.bp_systolic >= 14.0)  warnings.bp_systolic  = 'Above target';
-    if (data.bp_diastolic >= 9.0)  warnings.bp_diastolic = 'Above target';
-    if (data.rbs >= 200)           warnings.rbs          = 'Diabetic threshold';
-    if (data.cholesterol >= 240)   warnings.cholesterol  = 'High';
-    if (data.ldl >= 130)           warnings.ldl          = 'Borderline high';
-    if (data.hdl < 25)             warnings.hdl          = 'Critically low';
+    if (data.hba1c >= 6.5)          warnings.hba1c        = 'Diabetic range';
+    else if (data.hba1c < 4.0)      warnings.hba1c        = 'Unusually low';
+
+    if (data.bmi >= 30)             warnings.bmi          = 'Obese';
+    else if (data.bmi < 18.5)       warnings.bmi          = 'Underweight';
+
+    if (data.bp_systolic >= 14.0)   warnings.bp_systolic  = 'Above target';
+    if (data.bp_diastolic >= 9.0)   warnings.bp_diastolic = 'Above target';
+
+    if (data.rbs >= 200)            warnings.rbs          = 'Diabetic threshold';
+
+    if (data.cholesterol >= 240)    warnings.cholesterol  = 'High';
+    if (data.ldl >= 130)            warnings.ldl          = 'Borderline high';
+    if (data.hdl < 25)              warnings.hdl          = 'Critically low';
+    if (data.triglycerides >= 200)  warnings.triglycerides = 'Borderline high';
+    if (data.vldl >= 40)            warnings.vldl         = 'Above normal';
 
     return warnings;
 };
+
 module.exports = { patientSchema, patientCreateSchema, checkWarnings };

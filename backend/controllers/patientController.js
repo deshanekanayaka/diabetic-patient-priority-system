@@ -2,37 +2,40 @@ const axios = require('axios');
 const db = require('../config/database');
 const { patientSchema, patientCreateSchema, checkWarnings } = require('../utils/schema.js');
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8001';
+
+// Valid risk levels — used to validate the riskLevel query parameter in getAllPatients
+const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 
 // Flattens Zod's nested error structure into a flat array of readable strings
 // e.g. ['age: Min 0', 'bp_systolic: Min 50']
 const formatZodErrors = (zodError) =>
     zodError.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
 
-// clerk_id is included here because it must be stored with the record to scope it to the clinician
-const REQUIRED_CREATE_FIELDS = [
-  'clerk_id', 'age', 'sex', 'social_life',
-  'bp_systolic', 'bp_diastolic', 'bmi',
-  'cholesterol', 'triglycerides', 'hdl', 'ldl', 'vldl',
-  'hba1c', 'rbs',
-];
+// Adding a field to patientSchema automatically updates both field lists.
+const REQUIRED_UPDATE_FIELDS = Object.keys(patientSchema.shape);
+const REQUIRED_CREATE_FIELDS = [...REQUIRED_UPDATE_FIELDS, 'clerk_id'];
 
-// clerk_id is omitted on updates since it cannot change after creation
-const REQUIRED_UPDATE_FIELDS = [
-  'age', 'sex', 'social_life',
-  'bp_systolic', 'bp_diastolic', 'bmi',
-  'cholesterol', 'triglycerides', 'hdl', 'ldl', 'vldl',
-  'hba1c', 'rbs',
-];
+// Checks which required fields are missing or empty in the request body
+const getMissingFields = (body, fields) => {
+  const missing = [];
 
-// Returns a list of fields that are absent or empty in the request body
-const getMissingFields = (body, fields) =>
-    fields.filter(
-        (field) =>
-            body[field] === undefined ||
-            body[field] === null ||
-            body[field] === ''
-    );
+  for (const field of fields) {
+    if (body[field] === undefined || body[field] === null || body[field] === '') {
+      missing.push(field);
+    }
+  }
+
+  return missing;
+};
+
+// MySQL stores top_factors as a JSON string — converts it back to an array
+const parseTopFactors = (patient) => {
+  if (typeof patient.top_factors === 'string') {
+    patient.top_factors = JSON.parse(patient.top_factors);
+  }
+  return patient;
+};
 
 // POST /api/patients
 const createPatient = async (req, res) => {
@@ -70,10 +73,19 @@ const createPatient = async (req, res) => {
     // Warnings are informational — they do not block the record from being saved.
     const warnings = checkWarnings(result.data);
 
-    // Sends the seven key clinical indicators to the ML service to compute a risk score
-    const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
-      age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
-    });
+    // Sends the seven key clinical indicators to the ML service to compute a risk score.
+    // Handled separately so a service failure returns a clear 503 instead of a generic 500.
+    let mlResponse;
+    try {
+      mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
+        age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
+      });
+    } catch (mlError) {
+      return res.status(503).json({
+        success: false,
+        message: 'Risk scoring service unavailable. Please try again later.',
+      });
+    }
 
     // top_factors is the ranked list of clinical features that drove this score,
     // serialised to JSON string so MySQL can store it in the JSON column
@@ -81,13 +93,13 @@ const createPatient = async (req, res) => {
     const top_factors_json = JSON.stringify(top_factors);
 
     const sql = `
-      INSERT INTO patients
-        (clerk_id, age, sex, social_life,
-         cholesterol, triglycerides, hdl, ldl, vldl,
-         bp_systolic, bp_diastolic, hba1c, bmi, rbs,
-         risk_score, risk_category, top_factors)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+            INSERT INTO patients
+                (clerk_id, age, sex, social_life,
+                 cholesterol, triglycerides, hdl, ldl, vldl,
+                 bp_systolic, bp_diastolic, hba1c, bmi, rbs,
+                 risk_score, risk_category, top_factors)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
     const values = [
       clerk_id, age, sex, social_life,
@@ -126,8 +138,14 @@ const getAllPatients = async (req, res) => {
     let sql = 'SELECT * FROM patients WHERE clerk_id = ?';
     const values = [clerk_id];
 
-    // Appends a risk level filter only when a specific level is requested
+    // Validates riskLevel against allowed values before appending to the query
     if (riskLevel && riskLevel !== 'all') {
+      if (!VALID_RISK_LEVELS.includes(riskLevel)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid riskLevel. Must be low, medium, or high',
+        });
+      }
       sql += ' AND risk_category = ?';
       values.push(riskLevel);
     }
@@ -137,12 +155,8 @@ const getAllPatients = async (req, res) => {
 
     const patients = await db.query(sql, values);
 
-    // MySQL returns JSON columns as strings — parse them back into arrays
-    // so the frontend receives top_factors as ["HbA1c", "Age", "BMI"] not a raw string
-    const parsed = patients.map((p) => ({
-      ...p,
-      top_factors: typeof p.top_factors === 'string' ? JSON.parse(p.top_factors) : p.top_factors,
-    }));
+    // Parses top_factors from JSON string back to array for each patient
+    const parsed = patients.map(parseTopFactors);
 
     res.status(200).json({ success: true, count: parsed.length, data: parsed });
 
@@ -165,12 +179,7 @@ const getPatientById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Patient not found' });
     }
 
-    // Parses top_factors from JSON string back to array before sending to frontend
-    patient.top_factors = typeof patient.top_factors === 'string'
-        ? JSON.parse(patient.top_factors)
-        : patient.top_factors;
-
-    res.status(200).json({ success: true, data: patient });
+    res.status(200).json({ success: true, data: parseTopFactors(patient) });
 
   } catch (error) {
     console.error('Error fetching patient:', error.message);
@@ -224,24 +233,33 @@ const updatePatient = async (req, res) => {
     // Checks validated data against clinical warning thresholds
     const warnings = checkWarnings(result.data);
 
-    // Re-scores the patient because any health data change may shift their risk category
-    const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
-      age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
-    });
+    // Re-scores the patient because any health data change may shift their risk category.
+    // Handled separately so a service failure returns a clear 503 instead of a generic 500.
+    let mlResponse;
+    try {
+      mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, {
+        age, sex, hba1c, bmi, bp_systolic, bp_diastolic, rbs,
+      });
+    } catch (mlError) {
+      return res.status(503).json({
+        success: false,
+        message: 'Risk scoring service unavailable. Please try again later.',
+      });
+    }
 
     // Extracts all three ML outputs including the refreshed top_factors for this patient
     const { risk_score, risk_category, top_factors } = mlResponse.data;
     const top_factors_json = JSON.stringify(top_factors);
 
     const sql = `
-      UPDATE patients SET
-        age=?, sex=?, social_life=?,
-        cholesterol=?, triglycerides=?, hdl=?, ldl=?, vldl=?,
-        bp_systolic=?, bp_diastolic=?,
-        hba1c=?, bmi=?, rbs=?,
-        risk_score=?, risk_category=?, top_factors=?
-      WHERE patient_id=?
-    `;
+            UPDATE patients SET
+                age=?, sex=?, social_life=?,
+                cholesterol=?, triglycerides=?, hdl=?, ldl=?, vldl=?,
+                bp_systolic=?, bp_diastolic=?,
+                hba1c=?, bmi=?, rbs=?,
+                risk_score=?, risk_category=?, top_factors=?
+            WHERE patient_id=?
+        `;
 
     const values = [
       age, sex, social_life,
